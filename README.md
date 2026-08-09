@@ -1,4 +1,4 @@
-# WhatsApp Business Backup to Chatwoot
+# WhatsApp Business Android Backup to Chatwoot
 
 [Español](README.es.md) · **English**
 

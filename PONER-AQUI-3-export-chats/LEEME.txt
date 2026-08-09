@@ -1,0 +1,8 @@
+ACÁ va el export de chats para subir a Chatwoot (la carpeta que contiene
+chatwoot_export.json y attachments/).
+
+Si corrés la opción 1 (respaldo) con formato 'Chatwoot', el asistente ya
+lo deja acá solo. Si lo generaste en otra máquina, copiá la carpeta
+export_chatwoot entera acá adentro.
+
+Después: run.bat -> opción 3 (túnel) y opción 4 (importar chats).

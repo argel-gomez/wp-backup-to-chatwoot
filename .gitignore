@@ -1,0 +1,66 @@
+# dependencias
+node_modules/
+modules/backup/__pycache__/
+
+# configuración con credenciales reales
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+
+# estado y reportes generados en cada corrida
+estado.json
+errores.json
+errores-import.json
+errores-adjuntos.json
+contactos-ambiguos.json
+sin-telefono.json
+excluidos.json
+telefonos-reconstruidos.json
+ciudad-actualizada.json
+verificacion-adjuntos-*.json
+nombres-en-conflicto.json
+
+# artefactos del túnel y la subida de adjuntos
+tunel-ssh.cmd
+adjuntos.tar
+modules/chats/adjuntos.tar
+subida-adjuntos.json
+storage-staging/
+*.log
+*.bak
+
+# datos de clientes: exports y archivos de contactos NUNCA van a un repositorio
+*.vcf
+*.csv
+export_*/
+wa-export/
+chatwoot_export.json*
+_wa_decrypted.db
+msgstore.db
+msgstore.db.crypt*
+Databases/
+Media/
+Backups/
+attachments/
+
+# carpetas de entrada: lo que el usuario deja ahí son datos reales (solo se
+# versiona el LEEME.txt de cada una)
+PONER-AQUI-1-respaldo-celular/*
+PONER-AQUI-2-contactos/*
+PONER-AQUI-3-export-chats/*
+!PONER-AQUI-1-respaldo-celular/LEEME.txt
+!PONER-AQUI-2-contactos/LEEME.txt
+!PONER-AQUI-3-export-chats/LEEME.txt
+
+# las tres carpetas originales previas a la unificación: referencia histórica,
+# con datos de clientes adentro. No se versionan ni se ejecutan.
+_legacy/
+
+# archivos del sistema operativo/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

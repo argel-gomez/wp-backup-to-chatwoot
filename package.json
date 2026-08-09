@@ -1,0 +1,31 @@
+{
+  "name": "whatsapp-backup-to-chatwoot",
+  "version": "1.0.0",
+  "description": "Respaldo de WhatsApp Business e importación de contactos y chats a Chatwoot desde Windows.",
+  "type": "module",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/argel-gomez/wp-backup-to-chatwoot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/argel-gomez/wp-backup-to-chatwoot/issues"
+  },
+  "scripts": {
+    "start": "node menu.mjs",
+    "onboarding": "node menu.mjs --onboarding",
+    "contactos": "node modules/contactos/import-contacts.mjs",
+    "chats": "node modules/chats/import-chats.mjs",
+    "recon": "node modules/chats/recon.mjs",
+    "dry-run": "node modules/chats/import-chats.mjs --dry-run",
+    "test": "node --test"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {
+    "csv-parse": "^7.0.1",
+    "pg": "^8.13.0"
+  }
+}

@@ -1,0 +1,8 @@
+PONÉ ACÁ el respaldo de WhatsApp Business copiado del celular:
+la carpeta 'WhatsApp Business' entera (o su contenido), que contiene
+las subcarpetas Databases, Media y Backups.
+
+En el celular está en:
+  Almacenamiento interno > Android > media > com.whatsapp.w4b > WhatsApp Business
+
+Después: run.bat -> opción 1.

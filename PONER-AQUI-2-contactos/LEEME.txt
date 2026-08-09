@@ -1,0 +1,5 @@
+PONÉ ACÁ el archivo de contactos a importar en Chatwoot:
+  - contacts.vcf (export del celular o Google Contacts), o
+  - un .csv (si lo tenés en Excel: Archivo > Guardar como > CSV)
+
+Después: run.bat -> opción 2. El programa lo encuentra solo.

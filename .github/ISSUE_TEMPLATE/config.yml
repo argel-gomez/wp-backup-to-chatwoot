@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Chatwoot security vulnerability
+    url: https://developers.chatwoot.com/contributing-guide/security-reports
+    about: Privately report vulnerabilities that affect Chatwoot itself.
+  - name: Chatwoot community support
+    url: https://www.chatwoot.com/community
+    about: Ask general Chatwoot questions without posting private customer data.

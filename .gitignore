@@ -1,8 +1,8 @@
-# dependencias
+# Dependencies
 node_modules/
 modules/backup/__pycache__/
 
-# configuración con credenciales reales
+# Local configuration and credentials
 .env
 .env.*
 !.env.example
@@ -10,7 +10,7 @@ modules/backup/__pycache__/
 *.key
 *.p12
 
-# estado y reportes generados en cada corrida
+# Run state and generated reports
 estado.json
 errores.json
 errores-import.json
@@ -20,10 +20,11 @@ sin-telefono.json
 excluidos.json
 telefonos-reconstruidos.json
 ciudad-actualizada.json
+atributos-no-leidos.json
 verificacion-adjuntos-*.json
 nombres-en-conflicto.json
 
-# artefactos del túnel y la subida de adjuntos
+# Tunnel and attachment-upload artifacts
 tunel-ssh.cmd
 adjuntos.tar
 modules/chats/adjuntos.tar
@@ -32,9 +33,17 @@ storage-staging/
 *.log
 *.bak
 
-# datos de clientes: exports y archivos de contactos NUNCA van a un repositorio
+# Private data: backups, exports, contacts, and dumps must never enter Git
 *.vcf
 *.csv
+*.xls
+*.xlsx
+*.sql
+*.dump
+*.pgdump
+*.db
+*.sqlite
+*.sqlite3
 export_*/
 wa-export/
 chatwoot_export.json*
@@ -46,8 +55,7 @@ Media/
 Backups/
 attachments/
 
-# carpetas de entrada: lo que el usuario deja ahí son datos reales (solo se
-# versiona el README.txt de cada una)
+# Input folders contain real user data. Only their README.txt files are tracked.
 PLACE-HERE-1-ANDROID-BACKUP/*
 PLACE-HERE-2-CONTACTS/*
 PLACE-HERE-3-CHATWOOT-EXPORT/*
@@ -55,11 +63,10 @@ PLACE-HERE-3-CHATWOOT-EXPORT/*
 !PLACE-HERE-2-CONTACTS/README.txt
 !PLACE-HERE-3-CHATWOOT-EXPORT/README.txt
 
-# las tres carpetas originales previas a la unificación: referencia histórica,
-# con datos de clientes adentro. No se versionan ni se ejecutan.
+# Historical pre-unification folders may contain private data.
 _legacy/
 
-# archivos del sistema operativo/editor
+# Operating-system and editor files
 .DS_Store
 Thumbs.db
 .vscode/

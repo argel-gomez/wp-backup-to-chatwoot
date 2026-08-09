@@ -47,6 +47,30 @@ contact import.
 - Windows OpenSSH Client for server detection and the database tunnel.
 - Python 3.12 for backup processing. The wizard can install it through `winget`.
 
+## Compatibility and test record
+
+The following environment was used for the current `v1.0.0` validation. This is
+a test record, not a guarantee that every release or deployment will have the
+same database schema.
+
+| Component | Tested value | Test date |
+|---|---|---|
+| Android | 16 | August 9, 2026 |
+| WhatsApp Business | Version not recorded | August 9, 2026 |
+| Chatwoot | v4.16.2 | August 9, 2026 |
+| PostgreSQL | Version not recorded | August 9, 2026 |
+
+Before reporting compatibility, record the missing versions. PostgreSQL can be
+queried without changing data:
+
+```sql
+SELECT version();
+```
+
+The WhatsApp Business version appears under Android **Settings → Apps → WhatsApp
+Business → App details**. Never assume compatibility with a newer Chatwoot
+release: repeat the dry run and staging test after each upgrade.
+
 ## Install
 
 ### Download a ZIP
@@ -334,7 +358,7 @@ not a replacement for the PostgreSQL dump.
 |---|---|
 | `npm start` | Open the main menu |
 | `npm run onboarding` | Repeat first-run configuration |
-| `npm run contactos -- file.csv` | Import contacts |
+| `npm run contacts -- file.csv` | Import contacts |
 | `npm run dry-run` | Analyze the export without writing to PostgreSQL |
 | `npm run recon` | Run read-only database reconnaissance |
 | `node modules/chats/import-chats.mjs --all` | Import all pending chats |
@@ -400,6 +424,11 @@ WhatsApp Business Android history. Present it as an independent project, not as
 an official or supported Chatwoot importer, and lead with the staging, backup,
 and schema-compatibility warnings above.
 
+Sharing a link in the Chatwoot community or Discord does not require submitting
+this code to the official `chatwoot/chatwoot` repository. Do not describe it as
+an official integration, do not use Chatwoot support channels as this project's
+support desk, and direct issues back to this repository.
+
 Good places to share it are Chatwoot's official [community page and Discord](https://www.chatwoot.com/community)
 or [GitHub Discussions](https://github.com/orgs/chatwoot/discussions). If a test
 reveals a security issue in Chatwoot, follow Chatwoot's private security reporting
@@ -419,3 +448,7 @@ special characters, and configurable international phone numbers.
 
 [MIT](LICENSE). You may use, modify, and redistribute the project while preserving
 the license notice.
+
+## Author
+
+Argel Gomez — [github.com/argel-gomez/wp-backup-to-chatwoot](https://github.com/argel-gomez/wp-backup-to-chatwoot)

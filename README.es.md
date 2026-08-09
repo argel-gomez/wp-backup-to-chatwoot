@@ -33,6 +33,29 @@ cd wp-backup-to-chatwoot
 .\run.bat
 ```
 
+## Compatibilidad y registro de pruebas
+
+Este es el entorno informado para la validación actual de `v1.0.0`. Es un registro
+de prueba, no una garantía de que todas las instalaciones tengan el mismo esquema.
+
+| Componente | Valor probado | Fecha de prueba |
+|---|---|---|
+| Android | 16 | 9 de agosto de 2026 |
+| WhatsApp Business | Versión no registrada | 9 de agosto de 2026 |
+| Chatwoot | v4.16.2 | 9 de agosto de 2026 |
+| PostgreSQL | Versión no registrada | 9 de agosto de 2026 |
+
+Antes de informar compatibilidad conviene completar las versiones faltantes. La
+versión de PostgreSQL se obtiene sin modificar datos con:
+
+```sql
+SELECT version();
+```
+
+La versión de WhatsApp Business aparece en Android bajo **Configuración →
+Aplicaciones → WhatsApp Business → Detalles de la aplicación**. Después de cada
+actualización de Chatwoot se debe repetir el dry-run y la prueba en staging.
+
 ### Instalación automática de dependencias
 
 - **Node.js:** debe estar instalado antes. `run.bat` verifica la versión y muestra
@@ -150,12 +173,24 @@ y [respaldos](https://developers.chatwoot.com/self-hosted/deployment/backup).
 - `.env`, llaves SSH, bases, contactos, mensajes y adjuntos están ignorados por Git.
 - No publiques VCF, CSV, dumps, exports, `msgstore`, tokens ni datos del servidor.
 - Procesá solamente información para la que tengas autorización.
-- Revisá [SECURITY.md](SECURITY.md) antes de informar un problema.
+- Revisá [SECURITY.es.md](SECURITY.es.md) antes de informar un problema.
 
 La [documentación principal en inglés](README.md) contiene el onboarding completo,
 las variables, comandos, solución de problemas y detalles de cada paso.
+
+## Compartir en la comunidad
+
+Este es un proyecto externo e independiente. Podés compartir el enlace en la
+comunidad o Discord de Chatwoot sin enviarlo al repositorio oficial
+`chatwoot/chatwoot`. No lo presentes como integración oficial ni como herramienta
+con soporte de Chatwoot; los problemas y solicitudes deben dirigirse a este
+repositorio.
 
 ## Licencia
 
 [MIT](LICENSE). Se puede usar, modificar y redistribuir conservando el aviso de
 licencia.
+
+## Autor
+
+Argel Gomez — [github.com/argel-gomez/wp-backup-to-chatwoot](https://github.com/argel-gomez/wp-backup-to-chatwoot)

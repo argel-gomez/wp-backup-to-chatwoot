@@ -8,12 +8,12 @@ import { fileURLToPath } from "node:url";
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
-test("el exportador Python resuelve contactos internacionales sin aplicar variantes de Brasil", () => {
+test("the Python exporter resolves international contacts without Brazilian variants", () => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "wa-python-world-test-"));
   const vcf = path.join(temp, "world.vcf");
   fs.writeFileSync(vcf, [
-    "BEGIN:VCARD", "VERSION:3.0", "FN:CONTACTO_EJEMPLO_US", "TEL:+12025550123", "END:VCARD",
-    "BEGIN:VCARD", "VERSION:3.0", "FN:CONTACTO_EJEMPLO_UK", "TEL:00442079460123", "END:VCARD",
+    "BEGIN:VCARD", "VERSION:3.0", "FN:SAMPLE_CONTACT_US", "TEL:+12025550123", "END:VCARD",
+    "BEGIN:VCARD", "VERSION:3.0", "FN:SAMPLE_CONTACT_UK", "TEL:00442079460123", "END:VCARD",
   ].join("\r\n") + "\r\n", "utf8");
 
   const python = [
@@ -23,8 +23,8 @@ test("el exportador Python resuelve contactos internacionales sin aplicar varian
     "mod = importlib.util.module_from_spec(spec)",
     "spec.loader.exec_module(mod)",
     "idx, warnings = mod.ContactIndex.from_vcf(sys.argv[2])",
-    "assert idx.lookup('12025550123@s.whatsapp.net') == 'CONTACTO_EJEMPLO_US'",
-    "assert idx.lookup('442079460123@s.whatsapp.net') == 'CONTACTO_EJEMPLO_UK'",
+    "assert idx.lookup('12025550123@s.whatsapp.net') == 'SAMPLE_CONTACT_US'",
+    "assert idx.lookup('442079460123@s.whatsapp.net') == 'SAMPLE_CONTACT_UK'",
   ].join("; ");
 
   try {

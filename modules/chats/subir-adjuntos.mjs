@@ -67,16 +67,16 @@ function subirLote(staging, lote, key, destino, remoteStorage) {
       if (fallo) return reject(fallo);
       const ultimas = (s) => s.trim().split("\n").slice(-3).join(" | ");
       if (codTar !== 0) {
-        return reject(new WaError("ESSH", `falló el empaquetado del lote (código ${codTar})`, ultimas(errTar)));
+        return reject(new WaError("ESSH", `Batch packaging failed (exit code ${codTar})`, ultimas(errTar)));
       }
       if (codSsh !== 0) {
-        return reject(new WaError("ESSH", `falló la subida del lote (código ${codSsh})`, ultimas(errSsh)));
+        return reject(new WaError("ESSH", `Batch upload failed (exit code ${codSsh})`, ultimas(errSsh)));
       }
       resolve();
     };
 
-    tar.on("error", (e) => { fallo = new WaError("ESSH", "No se pudo ejecutar tar", e.message); codTar = -1; terminar(); });
-    ssh.on("error", (e) => { fallo = new WaError("ESSH", "No se pudo ejecutar ssh", e.message); codSsh = -1; terminar(); });
+    tar.on("error", (e) => { fallo = new WaError("ESSH", "Could not run tar", e.message); codTar = -1; terminar(); });
+    ssh.on("error", (e) => { fallo = new WaError("ESSH", "Could not run ssh", e.message); codSsh = -1; terminar(); });
     tar.on("close", (c) => { if (codTar === null) { codTar = c; terminar(); } });
     ssh.on("close", (c) => { if (codSsh === null) { codSsh = c; terminar(); } });
   });
@@ -89,11 +89,11 @@ function run(cmd, args, { capture = false } = {}) {
     stdio: capture ? ["ignore", "pipe", "pipe"] : "inherit",
     encoding: "utf8",
   });
-  if (res.error) throw new WaError("ESSH", `No se pudo ejecutar ${cmd}`, res.error.message);
+  if (res.error) throw new WaError("ESSH", `Could not run ${cmd}`, res.error.message);
   if (res.status !== 0) {
     throw new WaError(
-      "ESSH", `${cmd} falló (código ${res.status})`,
-      capture ? (res.stderr || "").trim() : "ver el detalle arriba"
+      "ESSH", `${cmd} failed (exit code ${res.status})`,
+      capture ? (res.stderr || "").trim() : "See the details above."
     );
   }
   return capture ? (res.stdout || "").trim() : "";
@@ -119,7 +119,7 @@ function statStaging(dir) {
 const gb = (b) => (b / 1024 / 1024 / 1024).toFixed(2);
 
 export async function subirAdjuntos() {
-  banner("Subir adjuntos al servidor", "empaqueta storage-staging/ y lo instala en el storage de Chatwoot");
+  banner("Upload attachments to the server", "streams storage-staging/ into Chatwoot storage");
 
   await ensureConfig(["STORAGE_ROOT", "SSH_HOST", "SSH_USER", "SSH_KEY"]);
   const staging = process.env.STORAGE_ROOT;
@@ -131,11 +131,11 @@ export async function subirAdjuntos() {
   const { files, bytes } = statStaging(staging);
   if (!files) {
     throw new WaError(
-      "ESTG", `No hay archivos en ${staging}`,
-      "¿Ya corriste el PASO 2 (colgar los adjuntos, opción 6 del importador de chats)?"
+      "ESTG", `No files were found in ${staging}`,
+      "Run step 2 first (attach files, option 6 in the chat importer)."
     );
   }
-  info(`Staging: ${files} archivos, ${gb(bytes)} GB en ${staging}`);
+  info(`Staging: ${files} files, ${gb(bytes)} GB in ${staging}`);
 
   const ssh = (remoteCmd, opts) =>
     run("ssh", ["-i", key, "-o", "BatchMode=yes", destino, remoteCmd], opts);
@@ -147,15 +147,14 @@ export async function subirAdjuntos() {
     ssh("sudo -n true", { capture: true });
   } catch {
     throw new WaError(
-      "ESUDO", "sudo pide contraseña en el servidor",
-      `Probá a mano: ssh -i "${key}" ${destino} "sudo -n true"\n` +
-      "  Si pide contraseña, hay que habilitar sudo sin contraseña para ese usuario, o " +
-      "correr la subida a mano (los comandos están en el README)."
+      "ESUDO", "sudo requires a password on the server",
+      `Test it manually: ssh -i "${key}" ${destino} "sudo -n true"\n` +
+      "Enable passwordless sudo for this user or run the upload manually using the README commands."
     );
   }
 
   // 1. Dónde está montado /app/storage en el host
-  info("Buscando la carpeta de storage en el servidor ...");
+  info("Locating the storage folder on the server...");
   const mounts = ssh(
     `docker inspect chatwoot-rails-1 --format '{{range .Mounts}}{{.Source}}|{{.Destination}}{{"\\n"}}{{end}}'`,
     { capture: true }
@@ -163,27 +162,27 @@ export async function subirAdjuntos() {
   const linea = mounts.split("\n").map((l) => l.trim()).find((l) => l.endsWith("|/app/storage"));
   if (!linea) {
     throw new WaError(
-      "ESTO", "No encontré el volumen /app/storage del contenedor",
-      `Montajes vistos:\n${mounts}`
+      "ESTO", "Could not find the container's /app/storage volume",
+      `Detected mounts:\n${mounts}`
     );
   }
   const remoteStorage = linea.split("|")[0];
-  ok(`Storage del servidor: ${remoteStorage}`);
+  ok(`Server storage: ${remoteStorage}`);
 
   // Todo lo que toque esta carpeta va con sudo: es un volumen de Docker, colgado de
   // /var/lib/docker/volumes/, que solo root puede leer.
   // Dueño actual: hay que respetarlo o Chatwoot no va a poder leer los archivos.
   const owner = ssh(`sudo stat -c '%u:%g' ${JSON.stringify(remoteStorage)}`, { capture: true });
-  info(`Dueño de esa carpeta: ${owner}`);
+  info(`Folder owner: ${owner}`);
 
   const espacio = ssh(`sudo df -h ${JSON.stringify(remoteStorage)} | tail -1`, { capture: true });
-  info(`Espacio en disco: ${espacio}`);
+  info(`Disk space: ${espacio}`);
 
   const confirmar = await ask(
-    `\nSe van a subir ${gb(bytes)} GB a ${remoteStorage}. ¿Continuar? (s/N): `
+    `\nUpload ${gb(bytes)} GB to ${remoteStorage}? (y/N): `
   );
-  if (!/^s/i.test(confirmar)) {
-    info("Cancelado.");
+  if (!/^(y|yes|s|si|sí)$/i.test(confirmar.trim())) {
+    info("Cancelled.");
     return;
   }
 
@@ -204,23 +203,23 @@ export async function subirAdjuntos() {
     .sort();
 
   if (!lotes.length) {
-    throw new WaError("ESTG", `${staging} no tiene subcarpetas con el formato de ActiveStorage`,
-      "¿Apunta STORAGE_ROOT a la carpeta correcta?");
+    throw new WaError("ESTG", `${staging} has no ActiveStorage-formatted subfolders`,
+      "Check that STORAGE_ROOT points to the correct folder.");
   }
 
   const hechos = cargarProgreso();
   const pendientes = lotes.filter((l) => !hechos.has(l));
   if (hechos.size) {
-    info(`Retomando: ${hechos.size} de ${lotes.length} lotes ya estaban subidos.`);
+    info(`Resuming: ${hechos.size} of ${lotes.length} batches were already uploaded.`);
   }
-  info(`\nSubiendo ${pendientes.length} lote(s) en streaming — sin archivos intermedios.\n`);
+  info(`\nStreaming ${pendientes.length} batch(es) without intermediate archives.\n`);
 
   let subidos = 0, fallidos = 0;
   const errores = [];
   let consecutivos = 0;
 
   for (const [i, lote] of pendientes.entries()) {
-    progressBar(i, pendientes.length, `lote ${lote}`);
+    progressBar(i, pendientes.length, `batch ${lote}`);
     try {
       // tar local -> ssh -> tar remoto. Todo por la tubería, nada toca el disco.
       await subirLote(staging, lote, key, destino, remoteStorage);
@@ -233,39 +232,39 @@ export async function subirAdjuntos() {
       fallidos++;
       consecutivos++;
       errores.push({ lote, error: e.message, detalle: e.detail });
-      fail(`lote ${lote}: ${e.message}`);
+      fail(`Batch ${lote}: ${e.message}`);
       // si se cayó la conexión, los siguientes van a fallar todos igual
       if (consecutivos >= 3) {
-        warn("\n3 lotes seguidos fallaron — se corta acá. Revisá la conexión y volvé a");
-        warn("correr esta opción: retoma desde el lote que quedó pendiente.");
+        warn("\nThree consecutive batches failed. Check the connection and run this option again.");
+        warn("The upload will resume at the first pending batch.");
         break;
       }
     }
   }
-  progressBar(pendientes.length, pendientes.length, "listo");
+  progressBar(pendientes.length, pendientes.length, "done");
   endProgressBar();
 
   // El dueño se ajusta una sola vez al final: es un chown recursivo, no hace falta por lote.
   if (subidos) {
-    info("\nAjustando permisos en el servidor ...");
+    info("\nUpdating server permissions...");
     ssh(`sudo chown -R ${owner} ${JSON.stringify(remoteStorage)}`);
   }
 
   const total = ssh(`sudo find ${JSON.stringify(remoteStorage)} -type f | wc -l`, { capture: true });
 
   panel([
-    fallidos ? "Subida incompleta" : "Adjuntos instalados",
-    `Lotes subidos:           ${subidos} de ${lotes.length}`,
-    `Archivos en staging:     ${files}`,
-    `Total en el storage:     ${total}`,
-    `Carpeta en el servidor:  ${remoteStorage}`,
+    fallidos ? "Upload incomplete" : "Attachments installed",
+    `Batches uploaded: ${subidos} of ${lotes.length}`,
+    `Files in staging: ${files}`,
+    `Total storage files: ${total}`,
+    `Server folder: ${remoteStorage}`,
   ], fallidos ? "amber" : "green");
 
   if (fallidos) {
-    warn(`${fallidos} lote(s) fallaron — volvé a correr esta opción para reintentar solo esos.`);
+    warn(`${fallidos} batch(es) failed. Run this option again to retry only those batches.`);
   } else {
     fs.rmSync(PROGRESO, { force: true }); // terminó todo: el registro ya no hace falta
-    info("Refrescá Chatwoot: las fotos y audios de las conversaciones importadas ya deberían verse.");
+    info("Refresh Chatwoot. Imported conversation images and audio should now be visible.");
   }
 }
 

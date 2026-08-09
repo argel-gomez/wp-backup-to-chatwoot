@@ -77,19 +77,19 @@ function refreshConfig() {
 function loadExport() {
   const jsonPath = path.join(EXPORT_DIR, "chatwoot_export.json");
   if (!fs.existsSync(jsonPath)) {
-    throw new WaError("EEXP", `No existe ${jsonPath}`, "Revisá EXPORT_DIR en .env");
+    throw new WaError("EEXP", `${jsonPath} does not exist`, "Check EXPORT_DIR in .env.");
   }
-  console.log(`Leyendo ${jsonPath} ...`);
+  console.log(`Reading ${jsonPath}...`);
   const data = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
   const contactsByJid = new Map(data.contacts.map((c) => [c.identifier, c]));
   return { conversations: data.conversations, contactsByJid };
 }
 
 function classifyJid(jid) {
-  if (jid.endsWith("@g.us")) return "grupo";
+  if (jid.endsWith("@g.us")) return "group";
   if (jid.endsWith("@lid")) return "lid";
   if (jid.endsWith("@s.whatsapp.net")) return "individual";
-  return "otro";
+  return "other";
 }
 
 // Los chats "@lid" usan el identificador de privacidad de WhatsApp, que no contiene el
@@ -134,8 +134,8 @@ function loadLidMap() {
   lidMap = new Map();
   const db = msgstorePath();
   if (!fs.existsSync(db)) {
-    warn(`No encontré ${db} — los chats @lid van a quedar con su identificador crudo.`);
-    warn("Si tenés la base descifrada en otro lado, poné la ruta en MSGSTORE_DB (.env).\n");
+    warn(`${db} was not found. @lid chats will keep their raw identifier.`);
+    warn("If the decrypted database is elsewhere, set its path in MSGSTORE_DB (.env).\n");
     return lidMap;
   }
   try {
@@ -149,9 +149,9 @@ function loadLidMap() {
     ).all();
     sqlite.close();
     for (const f of filas) lidMap.set(f.lid, String(f.telefono).replace(/\D/g, ""));
-    ok(`${lidMap.size} identificadores @lid resueltos a teléfono desde msgstore.`);
+    ok(`${lidMap.size} @lid identifiers resolved to phone numbers from msgstore.`);
   } catch (e) {
-    warn(`No pude leer el mapeo @lid (${e.message}) — esos chats quedan con el identificador crudo.`);
+    warn(`Could not read the @lid mapping (${e.message}). Those chats will keep their raw identifier.`);
   }
   return lidMap;
 }
@@ -181,9 +181,9 @@ function loadWaNames() {
         if (c && !waNames.has(c)) waNames.set(c, nombre);
       }
     }
-    if (waNames.size) ok(`${waNames.size} nombres rescatados de tarjetas de contacto compartidas.`);
+    if (waNames.size) ok(`${waNames.size} names recovered from shared contact cards.`);
   } catch (e) {
-    warn(`No pude leer las tarjetas de contacto (${e.message}).`);
+    warn(`Could not read shared contact cards (${e.message}).`);
   }
   return waNames;
 }
@@ -269,7 +269,7 @@ function prepareMessages(conv, kind) {
         mediaFound++;
       } else {
         mediaMissing++;
-        if (!content) content = `[adjunto ausente: ${a.file_type || "archivo"}]`;
+        if (!content) content = `[missing attachment: ${a.file_type || "file"}]`;
       }
     }
 
@@ -284,7 +284,7 @@ function prepareMessages(conv, kind) {
     // contenido — la pasada 2 empareja los mensajes por posición y verifica la fecha.
     if (!content && atts.length) content = placeholderFor(atts[0]);
 
-    if (kind === "grupo" && m.message_type === "incoming" && m.sender && m.sender !== "yo") {
+    if (kind === "group" && m.message_type === "incoming" && m.sender && m.sender !== "me") {
       content = content ? `${m.sender}: ${content}` : `${m.sender}:`;
     }
 
@@ -361,16 +361,16 @@ function dryRun({ conversations }) {
   biggest.sort((a, b) => b.n - a.n);
   const fmt = (e) => new Date(e * 1000).toISOString().slice(0, 10);
 
-  console.log("\n=== DRY RUN — nada se escribió en ninguna parte ===\n");
-  console.log(`Chats a importar:      ${stats.chats}  (saltados: ${stats.saltados} — estados/vacíos)`);
-  console.log(`  por tipo:            ${JSON.stringify(stats.porTipo)}`);
-  console.log(`Mensajes a importar:   ${stats.mensajes}  (entrantes ${stats.entrantes} / salientes ${stats.salientes})`);
-  console.log(`  descartados vacíos:  ${stats.vacios} (sin texto ni adjunto — borrados/sistema/media perdida)`);
-  console.log(`Rango de fechas:       ${fmt(tsMin)} → ${fmt(tsMax)}`);
-  console.log(`  por año:             ${JSON.stringify(stats.porAnio)}`);
-  console.log(`Adjuntos referenciados:${stats.adjRef}  (en disco: ${stats.adjEnDisco} / faltantes: ${stats.adjFaltantes})`);
-  console.log(`  van en el PASO 2 (opción 6), después de importar los mensajes`);
-  console.log("\nChats más grandes:");
+  console.log("\n=== DRY RUN — nothing was written ===\n");
+  console.log(`Chats to import:       ${stats.chats}  (skipped: ${stats.saltados} — status/empty)`);
+  console.log(`  by type:             ${JSON.stringify(stats.porTipo)}`);
+  console.log(`Messages to import:    ${stats.mensajes}  (incoming ${stats.entrantes} / outgoing ${stats.salientes})`);
+  console.log(`  empty discarded:     ${stats.vacios} (no text or attachment — deleted/system/missing media)`);
+  console.log(`Date range:            ${fmt(tsMin)} → ${fmt(tsMax)}`);
+  console.log(`  by year:             ${JSON.stringify(stats.porAnio)}`);
+  console.log(`Referenced attachments:${stats.adjRef}  (on disk: ${stats.adjEnDisco} / missing: ${stats.adjFaltantes})`);
+  console.log("  attachments are handled in step 2 (option 6), after messages are imported");
+  console.log("\nLargest chats:");
   for (const b of biggest.slice(0, 10)) console.log(`  ${String(b.n).padStart(7)}  ${b.jid}`);
   console.log("");
 }
@@ -416,7 +416,7 @@ async function connectDb() {
   try {
     await client.connect();
   } catch (e) {
-    throw new WaError("EDB", "No se pudo conectar a Postgres", `${e.message} — ¿el túnel SSH sigue abierto? ¿DATABASE_URL es correcta?`);
+    throw new WaError("EDB", "Could not connect to PostgreSQL", `${e.message} — Is the SSH tunnel still open? Is DATABASE_URL correct?`);
   }
   return client;
 }
@@ -528,7 +528,7 @@ async function findOrCreateContact(client, index, jid, name, identity) {
       contactosAmbiguos.push({
         jid, nombre: name, telefono_wa: identity.phone,
         candidatos: cands.map((r) => ({ id: r.id, nombre: r.name, telefono: r.phone_number })),
-        motivo: "el número coincide con dos personas distintas — se creó aparte, revisar a mano",
+        motivo: "the number matches two different people; created separately for manual review",
       });
     }
   }
@@ -651,7 +651,7 @@ async function runPreflight() {
   await ensureConfig(["EXPORT_DIR", "DATABASE_URL", "ACCOUNT_ID"]);
   refreshConfig();
 
-  banner("Verificación previa", "simulación contra la base real — NO escribe nada");
+  banner("Preflight check", "simulation against the real database — writes nothing");
 
   const { conversations, contactsByJid } = loadExport();
   const client = await connectDb();
@@ -667,7 +667,7 @@ async function runPreflight() {
     );
     const index = { byPhone: new Map(), byIdent: new Map(), byCanon: new Map() };
     for (const row of res.rows) addToIndex(index, row);
-    info(`Contactos reales en Chatwoot: ${res.rows.length}\n`);
+    info(`Existing Chatwoot contacts: ${res.rows.length}\n`);
 
     const st = { conNombre: 0, existenteSinNombre: 0, nuevoConNombre: 0, nuevoDeVcard: 0, nuevoSinNombre: 0,
                  ambiguo: 0, sinTelefono: 0, fusionados: 0 };
@@ -688,7 +688,7 @@ async function runPreflight() {
         // no hay con qué cruzarlos contra la agenda
         st.sinTelefono++;
         if (!esNombreReal(nombreExport) && muestraCruda.length < 6) {
-          muestraCruda.push(`${nombreExport}  (${identity.kind}: sin teléfono para cruzar)`);
+          muestraCruda.push(`${nombreExport}  (${identity.kind}: no phone number to match)`);
         }
         continue;
       }
@@ -700,7 +700,7 @@ async function runPreflight() {
           st.conNombre++;
           if (muestraOk.length < 6) {
             muestraOk.push(`${jid.split("@")[0]} -> "${r.contacto.name}"` +
-              (r.fusionados ? ` (${r.fusionados} fichas duplicadas, usa la mejor)` : ""));
+              (r.fusionados ? ` (${r.fusionados} duplicate records; using the best match)` : ""));
           }
         } else {
           st.existenteSinNombre++;
@@ -721,7 +721,7 @@ async function runPreflight() {
           if (muestraVcard.length < 6) muestraVcard.push(`${identity.phone.replace("+", "")} -> "${deVcard}"`);
         } else {
           st.nuevoSinNombre++;
-          if (muestraCruda.length < 6) muestraCruda.push(`${nombreExport}  (no está en tu agenda)`);
+          if (muestraCruda.length < 6) muestraCruda.push(`${nombreExport}  (not in your address book)`);
         }
       }
     }
@@ -729,40 +729,38 @@ async function runPreflight() {
     const totalCrudos = st.existenteSinNombre + st.nuevoSinNombre + st.sinTelefono;
 
     panel([
-      "Cómo se van a ver los chats importados",
+      "How imported chats will appear",
       "",
-      `Con NOMBRE del contacto ya existente:  ${st.conNombre}`,
-      `  de esos, con fichas duplicadas
-   que se fusionan:                     ${st.fusionados}`.replace(/\s*\n\s*/, " "),
-      `Contacto nuevo, con nombre del export: ${st.nuevoConNombre}`,
-      `Contacto nuevo, nombre rescatado de
-   una tarjeta compartida:              ${st.nuevoDeVcard}`.replace(/\s*\n\s*/, " "),
+      `Using an EXISTING contact name:          ${st.conNombre}`,
+      `  duplicate records merged:              ${st.fusionados}`,
+      `New contact named by the export:          ${st.nuevoConNombre}`,
+      `New contact named by a shared card:       ${st.nuevoDeVcard}`,
       "",
-      `Van a mostrar NÚMERO/ID crudo:         ${totalCrudos}`,
-      `  ya existía pero sin nombre:          ${st.existenteSinNombre}`,
-      `  no está en tu agenda:                ${st.nuevoSinNombre}`,
-      `  grupos y @lid (sin teléfono):        ${st.sinTelefono}`,
+      `Will display a raw NUMBER/ID:             ${totalCrudos}`,
+      `  existing contact without a name:        ${st.existenteSinNombre}`,
+      `  not in the address book:                ${st.nuevoSinNombre}`,
+      `  groups and @lid (no phone number):       ${st.sinTelefono}`,
       "",
-      `Ambiguos (2 personas distintas):       ${st.ambiguo}`,
+      `Ambiguous (two different people):         ${st.ambiguo}`,
     ], st.ambiguo > 100 ? "amber" : "green");
 
     if (muestraOk.length) {
-      console.log(bold("\nEjemplos que van a quedar BIEN:"));
+      console.log(bold("\nExamples that will display correctly:"));
       for (const m of muestraOk) console.log(`  ✓ ${m}`);
     }
     if (muestraVcard.length) {
-      console.log(bold("\nNombres rescatados de tarjetas compartidas en los chats:"));
+      console.log(bold("\nNames recovered from contact cards shared in chats:"));
       for (const m of muestraVcard) console.log(`  ✓ ${m}`);
     }
     if (muestraCruda.length) {
-      console.log(bold("\nEjemplos que van a mostrar número crudo:"));
+      console.log(bold("\nExamples that will display a raw number:"));
       for (const m of muestraCruda) console.log(`  · ${m}`);
-      console.log("  (para que muestren nombre, hay que cargarlos antes en los contactos de Chatwoot)");
+      console.log("  (import these people into Chatwoot Contacts first if you want names to appear)");
     }
     if (ambiguos.length) {
       fs.writeFileSync("contactos-ambiguos.json", JSON.stringify(ambiguos, null, 2));
-      warn(`\n${ambiguos.length} número(s) coinciden con dos personas distintas — se van a crear aparte.`);
-      warn("Detalle en contactos-ambiguos.json (revisar y unificar a mano en Chatwoot).");
+      warn(`\n${ambiguos.length} number(s) match two different people and will be created separately.`);
+      warn("See contactos-ambiguos.json, then review and merge manually in Chatwoot.");
     }
   } finally {
     await client.end();
@@ -800,17 +798,17 @@ async function runTestChatsFlow() {
   const candidates = listTestCandidates(conversations, contactsByJid);
 
   if (!candidates.length) {
-    warn("No encontré chats individuales chicos con nombre reconocible. Podés pegar un jid a mano igual.");
+    warn("No small individual chats with recognizable names were found. You can still enter a JID manually.");
   } else {
-    console.log(bold("\nChats sugeridos para probar (individuales, con nombre, tamaño chico/mediano):\n"));
+    console.log(bold("\nSuggested test chats (individual, named, small or medium):\n"));
     candidates.forEach((cand, i) => {
-      console.log(`  ${String(i + 1).padStart(2)}) ${cand.name.slice(0, 42).padEnd(42)} ${String(cand.count).padStart(4)} mensajes`);
+      console.log(`  ${String(i + 1).padStart(2)}) ${cand.name.slice(0, 42).padEnd(42)} ${String(cand.count).padStart(4)} messages`);
     });
   }
 
   const raw = await ask(
-    "\nElegí números separados por coma (ej: 1,3) — Enter = las 2 primeras de la lista, " +
-    "o pegá un jid exacto (ej. <JID_EJEMPLO>@s.whatsapp.net): "
+    "\nChoose comma-separated list numbers (for example, 1,3); Enter selects the first two, " +
+    "or enter an exact JID (for example, <EXAMPLE_JID>@s.whatsapp.net): "
   );
 
   let jids;
@@ -826,11 +824,11 @@ async function runTestChatsFlow() {
   }
 
   if (!jids.length) {
-    warn("Nada seleccionado.");
+    warn("Nothing selected.");
     return;
   }
 
-  console.log(`\nSe van a importar ${jids.length} chat(s) de prueba:`);
+  console.log(`\nThe following ${jids.length} test chat(s) will be imported:`);
   for (const j of jids) console.log(`  - ${j}`);
   await runImport({ chats: jids });
 }
@@ -920,16 +918,16 @@ async function addAttachmentsToChat(client, conv, conversationId, onProgress = (
   if (db.rows.length !== msgs.length) {
     throw new WaError(
       "EMATCH",
-      `no coincide la cantidad de mensajes (base: ${db.rows.length}, export: ${msgs.length})`,
-      "la conversación se modificó después de importarla — se saltea para no colgar archivos en el mensaje equivocado"
+      `Message counts do not match (database: ${db.rows.length}, export: ${msgs.length})`,
+      "The conversation changed after import, so it is skipped to avoid attaching files to the wrong message."
     );
   }
   const desalineado = msgs.findIndex((m, i) => Number(db.rows[i].epoch) !== Number(m.epoch));
   if (desalineado !== -1) {
     throw new WaError(
       "EMATCH",
-      `la fecha del mensaje ${desalineado + 1} no coincide con la base`,
-      "se saltea este chat para no colgar archivos en el mensaje equivocado"
+      `The date of message ${desalineado + 1} does not match the database`,
+      "This chat is skipped to avoid attaching files to the wrong message."
     );
   }
 
@@ -1002,7 +1000,7 @@ async function runAttachmentPass() {
   await ensureDestino(); // los adjuntos se cuelgan SOLO a lo importado en esta bandeja
   await ensureConfig(["STORAGE_ROOT"]);
   refreshConfig();
-  info(`Se van a colgar los adjuntos de lo importado en la bandeja ${INBOX_ID}.`);
+  info(`Attachments will be linked only to imported chats in inbox ${INBOX_ID}.`);
 
   const { conversations, contactsByJid } = loadExport();
   const client = await connectDb();
@@ -1042,7 +1040,7 @@ async function runAttachmentPass() {
     }
 
     if (!cola.length) {
-      info("No hay adjuntos pendientes: o ya están todos, o todavía no importaste los chats.");
+      info("No attachments are pending. They are already complete, or no chats have been imported yet.");
       return;
     }
 
@@ -1050,8 +1048,8 @@ async function runAttachmentPass() {
     // la última semana quedan completos (con sus fotos) desde el arranque.
     cola.sort((a, b) => lastRawEpoch(b.conv) - lastRawEpoch(a.conv));
 
-    info(`${cola.length} chat(s) con adjuntos pendientes — ${totalAdjuntos} archivos en total.`);
-    info(`Se guardan en ${STORAGE_ROOT} y después se suben al servidor con la opción 7.\n`);
+    info(`${cola.length} chat(s) have pending attachments — ${totalAdjuntos} files total.`);
+    info(`Files are staged in ${STORAGE_ROOT} and uploaded to the server with option 7.\n`);
 
     let hechos = 0, chatsOk = 0, fallidos = 0;
     const errores = [];
@@ -1069,14 +1067,14 @@ async function runAttachmentPass() {
       const jid = item.conv.contact_identifier;
       const nombre = contactsByJid.get(jid)?.name || jid;
       try {
-        progressBar(hechos, totalAdjuntos, `${nombre.slice(0, 30)} · abriendo`);
+        progressBar(hechos, totalAdjuntos, `${nombre.slice(0, 30)} · opening`);
         const res = await addAttachmentsToChat(client, item.conv, item.conversationId, (n, tot) => {
-          progressBar(hechos + n, totalAdjuntos, `${nombre.slice(0, 26)} · ${n}/${tot} archivos`);
+          progressBar(hechos + n, totalAdjuntos, `${nombre.slice(0, 26)} · ${n}/${tot} files`);
         });
         hechos += res.puestos || 0;
         chatsOk++;
         consecutivos = 0;
-        progressBar(hechos, totalAdjuntos, `${nombre.slice(0, 30)} · listo`);
+        progressBar(hechos, totalAdjuntos, `${nombre.slice(0, 30)} · done`);
       } catch (e) {
         endProgressBar();
         fallidos++;
@@ -1085,7 +1083,7 @@ async function runAttachmentPass() {
         fail(`${nombre}: ${e.message}`);
 
         if (consecutivos >= MAX_FALLOS_SEGUIDOS) {
-          abortado = `${consecutivos} fallos seguidos — se corta acá para no quemar la lista entera.`;
+          abortado = `${consecutivos} consecutive failures; stopping to preserve the remaining queue.`;
           break;
         }
       }
@@ -1093,24 +1091,24 @@ async function runAttachmentPass() {
     endProgressBar();
 
     if (abortado) {
-      warn(`\nPASADA CORTADA: ${abortado}`);
-      warn("Revisá que el túnel SSH siga abierto y volvé a correr esta opción: retoma donde quedó.");
+      warn(`\nATTACHMENT PASS STOPPED: ${abortado}`);
+      warn("Check that the SSH tunnel is open and run this option again. It resumes where it stopped.");
     }
 
     panel([
-      "Adjuntos procesados",
-      `Chats con adjuntos:  ${chatsOk}`,
-      `Archivos colgados:   ${hechos}`,
-      `Chats con problema:  ${fallidos}`,
-      `Pendientes:          ${cola.length - chatsOk - fallidos}`,
+      "Attachments processed",
+      `Chats with attachments: ${chatsOk}`,
+      `Files linked: ${hechos}`,
+      `Chats with errors: ${fallidos}`,
+      `Pending: ${cola.length - chatsOk - fallidos}`,
     ], fallidos ? "amber" : "green");
 
     if (errores.length) {
       fs.writeFileSync("errores-adjuntos.json", JSON.stringify(errores, null, 2));
-      warn("Detalle de los chats que se saltearon en errores-adjuntos.json");
+      warn("See errores-adjuntos.json for details about skipped chats.");
     }
     if (hechos) {
-      info("Siguiente paso: opción 7 para subir los archivos al servidor.");
+      info("Next step: option 7 uploads the files to the server.");
     }
   } finally {
     await client.end();
@@ -1146,16 +1144,16 @@ async function runImport(opts = {}) {
   });
 
   if (!pending.length) {
-    warn(wanted ? "Ninguno de esos chats está en el export, o ya fueron importados." : "Nada pendiente.");
+    warn(wanted ? "None of those chats are in the export, or they were already imported." : "Nothing pending.");
     return;
   }
 
-  info(`${pending.length} chat(s) pendientes. Conectando a la base ...`);
+  info(`${pending.length} pending chat(s). Connecting to the database...`);
   const client = await connectDb();
 
-  info("Cargando los contactos que ya existen en Chatwoot ...");
+  info("Loading existing Chatwoot contacts...");
   const index = await loadContactIndex(client);
-  ok(`${index.byPhone.size} contactos con teléfono indexados para no duplicar.`);
+  ok(`${index.byPhone.size} contacts indexed by phone number to prevent duplicates.`);
 
   // El orden se decide DESPUÉS de tener el índice, porque para priorizar los chats que
   // ya tienen contacto con nombre hay que saber cuáles son.
@@ -1176,7 +1174,7 @@ async function runImport(opts = {}) {
     });
     if (opts.nombresPrimero) {
       const n = [...conNombre.values()].filter(Boolean).length;
-      info(`Orden: primero los ${n} chats que ya tienen contacto con nombre, después los ${pending.length - n} restantes.`);
+      info(`Order: ${n} chats with named contacts first, followed by the remaining ${pending.length - n}.`);
     }
   }
   if (opts.limit) pending = pending.slice(0, opts.limit);
@@ -1211,12 +1209,12 @@ async function runImport(opts = {}) {
         } else if (res.alreadyInDb) {
           state.importados[claveEstado(jid)] = { conversation_id: res.conversationId };
           alreadyIn++;
-          info(`${jid}: ya estaba en la base (conv ${res.conversationId})`);
+          info(`${jid}: already in the database (conversation ${res.conversationId})`);
         } else {
           state.importados[claveEstado(jid)] = { conversation_id: res.conversationId, mensajes: res.messages };
           totalMsgs += res.messages;
           done++;
-          ok(`${jid}: conversación #${res.displayId} con ${res.messages} mensajes`);
+          ok(`${jid}: conversation #${res.displayId} with ${res.messages} messages`);
         }
         saveState(state);
       } catch (e) {
@@ -1227,7 +1225,7 @@ async function runImport(opts = {}) {
         fail(`${jid}: ${e.message}`);
 
         if (consecutivos >= MAX_FALLOS_SEGUIDOS) {
-          abortado = `${consecutivos} fallos seguidos — se corta acá para no quemar la lista entera.`;
+          abortado = `${consecutivos} consecutive failures; stopping to preserve the remaining queue.`;
           break;
         }
       }
@@ -1239,7 +1237,7 @@ async function runImport(opts = {}) {
       if (pausa > 0) await new Promise((r) => setTimeout(r, pausa));
     }
     if (!abortado) {
-      progressBar(pending.length, pending.length, "listo");
+      progressBar(pending.length, pending.length, "done");
       endProgressBar();
     }
   } finally {
@@ -1247,29 +1245,29 @@ async function runImport(opts = {}) {
   }
 
   if (abortado) {
-    warn(`\nIMPORTACIÓN CORTADA: ${abortado}`);
-    warn("Revisá que el túnel SSH siga abierto y volvé a correr: retoma donde quedó.");
+    warn(`\nIMPORT STOPPED: ${abortado}`);
+    warn("Check that the SSH tunnel is open and run the import again. It resumes where it stopped.");
   }
 
   const resumen = [
-    "Importación terminada",
-    `Chats importados:   ${done}`,
-    `Mensajes:            ${totalMsgs}`,
-    `Ya estaban (dupe):   ${alreadyIn}`,
-    `Errores:             ${failed}`,
+    "Import complete",
+    `Chats imported: ${done}`,
+    `Messages: ${totalMsgs}`,
+    `Already present: ${alreadyIn}`,
+    `Errors: ${failed}`,
   ];
   panel(resumen, failed ? "amber" : "green");
   if (failed) {
     fs.writeFileSync("errores-import.json", JSON.stringify(errores, null, 2));
-    warn("Los chats con error quedan pendientes (se reintentan al volver a correr) — detalle en errores-import.json");
+    warn("Chats with errors remain pending and will be retried. See errores-import.json.");
   }
 
   if (contactosAmbiguos.length) {
     fs.writeFileSync("contactos-ambiguos.json", JSON.stringify(contactosAmbiguos, null, 2));
     warn(
-      `${contactosAmbiguos.length} chat(s) con teléfono ambiguo (coincide en los últimos 8 dígitos con más ` +
-      `de un contacto existente): se crearon como contacto NUEVO en vez de arriesgar la fusión. ` +
-      `Revisar y unificar a mano en Chatwoot — detalle en contactos-ambiguos.json`
+      `${contactosAmbiguos.length} chat(s) have ambiguous phone numbers matching more than one existing ` +
+      `contact by the last eight digits. New contacts were created instead of risking an incorrect merge. ` +
+      `Review and merge them manually in Chatwoot; see contactos-ambiguos.json.`
     );
   }
 }
@@ -1296,15 +1294,15 @@ async function runUndo() {
     );
 
     if (!porInbox.rows.length) {
-      info("No hay nada importado por este script en la base.");
+      info("This script has not imported anything into the database.");
       return;
     }
 
     if (porInbox.rows.length > 1) {
-      console.log(bold("\nHistorial importado en esta cuenta:"));
+      console.log(bold("\nImported history in this account:"));
       for (const r of porInbox.rows) {
-        const marca = Number(r.inbox_id) === INBOX_ID ? "  <- se va a borrar SOLO esta" : "";
-        console.log(`  inbox ${r.inbox_id}  ${r.name.padEnd(32)} ${String(r.convs).padStart(6)} conversaciones${marca}`);
+        const marca = Number(r.inbox_id) === INBOX_ID ? "  <- ONLY this inbox will be deleted" : "";
+        console.log(`  inbox ${r.inbox_id}  ${r.name.padEnd(32)} ${String(r.convs).padStart(6)} conversations${marca}`);
       }
       console.log("");
     }
@@ -1317,18 +1315,17 @@ async function runUndo() {
     const convIds = convs.rows.map((r) => r.id);
     if (!convIds.length) {
       const destino = porInbox.rows.find((r) => Number(r.inbox_id) === INBOX_ID);
-      info(`La bandeja ${INBOX_ID} no tiene nada importado por este script.${destino ? "" : " (Lo importado está en otra bandeja — cambiala con la opción 10.)"}`);
+      info(`Inbox ${INBOX_ID} has no history imported by this script.${destino ? "" : " Imported history is in another inbox; change the target with option 10."}`);
       return;
     }
 
     const nombreInbox = porInbox.rows.find((r) => Number(r.inbox_id) === INBOX_ID)?.name || `inbox ${INBOX_ID}`;
     const answer = await ask(
-      `Se van a borrar ${convIds.length} conversaciones importadas en "${nombreInbox}" ` +
-      `(con sus mensajes y adjuntos). El historial de las demás bandejas NO se toca. ` +
-      `¿Seguro? (escribí "borrar"): `
+      `Delete ${convIds.length} imported conversations from "${nombreInbox}", including messages and attachments? ` +
+      `History in every other inbox remains untouched. Type "delete" to confirm: `
     );
-    if (answer.toLowerCase() !== "borrar") {
-      info("Cancelado.");
+    if (!["delete", "borrar"].includes(answer.toLowerCase())) {
+      info("Cancelled.");
       return;
     }
 
@@ -1391,11 +1388,11 @@ async function runUndo() {
     saveState(estado);
 
     panel([
-      "Deshecho",
-      `Bandeja:                 ${nombreInbox}`,
-      `Conversaciones borradas: ${convIds.length}`,
-      `Adjuntos borrados:       ${blobs.rows.length} (${filesRemoved} archivos del storage)`,
-      `Contactos borrados:      ${orphanIds.length}`,
+      "Import removed",
+      `Inbox: ${nombreInbox}`,
+      `Conversations deleted: ${convIds.length}`,
+      `Attachments deleted: ${blobs.rows.length} (${filesRemoved} storage files)`,
+      `Contacts deleted: ${orphanIds.length}`,
     ]);
   } catch (e) {
     try { await client.query("rollback"); } catch {}
@@ -1425,23 +1422,23 @@ async function elegirInbox(client) {
 
   if (!rows.length) {
     throw new WaError(
-      "EINBOX", `La cuenta ${ACCOUNT_ID} no tiene ninguna bandeja de entrada`,
-      "Creá primero la bandeja de WhatsApp en Chatwoot (Configuración > Bandejas de entrada)."
+      "EINBOX", `Account ${ACCOUNT_ID} has no inboxes`,
+      "Create the WhatsApp inbox in Chatwoot first (Settings > Inboxes)."
     );
   }
 
-  console.log(bold("\n¿A qué número (bandeja de entrada) van los chats importados?\n"));
+  console.log(bold("\nWhich phone number (inbox) should receive the imported chats?\n"));
   rows.forEach((r, i) => {
-    const tel = r.phone_number ? r.phone_number : "(sin número asociado)";
+    const tel = r.phone_number ? r.phone_number : "(no associated number)";
     const tipo = r.channel_type.replace("Channel::", "");
     console.log(`  ${String(i + 1).padStart(2)}) ${tel.padEnd(18)} ${r.name}   [${tipo}${r.provider ? ", " + r.provider : ""}]`);
   });
   console.log("");
-  warn("El historial va a aparecer dentro de esa bandeja, con las fechas reales.");
+  warn("Imported history will appear in this inbox with its original dates.");
   console.log("");
 
   while (true) {
-    const raw = await ask(`Elegí el número de la lista (1-${rows.length}), o pegá el teléfono con +55: `);
+    const raw = await ask(`Choose a list number (1-${rows.length}), or enter the complete international phone number: `);
     const limpio = raw.trim();
 
     const porLista = Number(limpio);
@@ -1453,15 +1450,15 @@ async function elegirInbox(client) {
       const match = rows.filter((r) => r.phone_number.replace(/\D/g, "").endsWith(digitos.slice(-8)));
       if (match.length === 1) return match[0];
       if (match.length > 1) {
-        warn("Ese número coincide con más de una bandeja — elegila por número de la lista.");
+        warn("That number matches more than one inbox. Choose one by its list number.");
         continue;
       }
-      warn(`Ninguna bandeja de esta cuenta tiene el número ${limpio}.`);
-      warn("Si es un número nuevo, primero hay que crear su bandeja en Chatwoot (Configuración > Bandejas de entrada).");
+      warn(`No inbox in this account uses the number ${limpio}.`);
+      warn("For a new number, create its inbox in Chatwoot first (Settings > Inboxes).");
       continue;
     }
 
-    warn("No entendí. Escribí el número de la lista o pegá el teléfono completo.");
+    warn("Invalid selection. Enter a list number or a complete phone number.");
   }
 }
 
@@ -1469,9 +1466,9 @@ async function elegirDeLista(titulo, rows, formato) {
   console.log(bold(`\n${titulo}\n`));
   rows.forEach((r, i) => console.log(`  ${String(i + 1).padStart(2)}) ${formato(r)}`));
   while (true) {
-    const n = Number((await ask(`\nElegí (1-${rows.length}): `)).trim());
+    const n = Number((await ask(`\nChoose (1-${rows.length}): `)).trim());
     if (Number.isInteger(n) && rows[n - 1]) return rows[n - 1];
-    warn("Opción inválida.");
+    warn("Invalid option.");
   }
 }
 
@@ -1491,11 +1488,11 @@ async function ensureDestino({ forzar = false } = {}) {
       const cuentas = (await client.query("select id, name from accounts order by id")).rows;
       const elegida = cuentas.length === 1
         ? cuentas[0]
-        : await elegirDeLista("¿En qué cuenta de Chatwoot?", cuentas, (c) => `${c.name}  (id ${c.id})`);
+        : await elegirDeLista("Which Chatwoot account?", cuentas, (c) => `${c.name}  (id ${c.id})`);
       process.env.ACCOUNT_ID = String(elegida.id);
       saveToEnvFile({ ACCOUNT_ID: String(elegida.id) });
       refreshConfig();
-      ok(`Cuenta: ${elegida.name}`);
+      ok(`Account: ${elegida.name}`);
     }
 
     if (!INBOX_ID) {
@@ -1503,7 +1500,7 @@ async function ensureDestino({ forzar = false } = {}) {
       process.env.INBOX_ID = String(inbox.id);
       saveToEnvFile({ INBOX_ID: String(inbox.id) });
       refreshConfig();
-      ok(`Bandeja destino: ${inbox.name}${inbox.phone_number ? ` (${inbox.phone_number})` : ""}`);
+      ok(`Target inbox: ${inbox.name}${inbox.phone_number ? ` (${inbox.phone_number})` : ""}`);
     }
 
     if (!AGENT_USER_ID) {
@@ -1514,17 +1511,17 @@ async function ensureDestino({ forzar = false } = {}) {
         [ACCOUNT_ID]
       )).rows;
       if (!usuarios.length) {
-        throw new WaError("EUSER", `La cuenta ${ACCOUNT_ID} no tiene usuarios`, "Revisá la cuenta elegida.");
+        throw new WaError("EUSER", `Account ${ACCOUNT_ID} has no users`, "Check the selected account.");
       }
       const elegido = await elegirDeLista(
-        "¿Qué usuario figura como remitente de los mensajes que enviaste vos?",
+        "Which user should appear as the sender of your outgoing messages?",
         usuarios,
         (u) => `${u.name} <${u.email}>  (${u.role})`
       );
       process.env.AGENT_USER_ID = String(elegido.id);
       saveToEnvFile({ AGENT_USER_ID: String(elegido.id) });
       refreshConfig();
-      ok(`Remitente de los salientes: ${elegido.name}`);
+      ok(`Outgoing message sender: ${elegido.name}`);
     }
   } finally {
     await client.end();
@@ -1545,15 +1542,15 @@ async function mostrarDestino() {
         [INBOX_ID]
       );
       if (rows.length) {
-        const tel = rows[0].phone_number || "sin número";
-        console.log(c("dim", `  destino: ${rows[0].name} · ${tel}  (cuenta ${ACCOUNT_ID}, inbox ${INBOX_ID})`));
+        const tel = rows[0].phone_number || "no number";
+        console.log(c("dim", `  target: ${rows[0].name} · ${tel}  (account ${ACCOUNT_ID}, inbox ${INBOX_ID})`));
       }
     } finally {
       await client.end();
     }
   } catch {
     // sin base a mano (túnel cerrado): no es motivo para no mostrar el menú
-    console.log(c("dim", `  destino: cuenta ${ACCOUNT_ID}, inbox ${INBOX_ID} (no se pudo consultar el nombre)`));
+    console.log(c("dim", `  target: account ${ACCOUNT_ID}, inbox ${INBOX_ID} (name unavailable)`));
   }
 }
 
@@ -1573,30 +1570,30 @@ async function menu() {
 
   while (true) {
     console.log("");
-    banner("Importador de historial WhatsApp -> Chatwoot", "inserción directa en Postgres — nada se envía a los clientes");
+    banner("WhatsApp history importer -> Chatwoot", "direct PostgreSQL insertion — nothing is sent to customers");
     await mostrarDestino();
     console.log("");
-    console.log(bold("   Antes de importar — no escriben nada:"));
-    console.log("1) Dry-run: estadísticas del export (ni siquiera se conecta a la base)");
-    console.log("2) Reconocimiento de la base (cuenta, inbox, agentes, storage)");
-    console.log("3) Verificar cómo van a quedar los nombres de contacto");
-    console.log("4) Importar chats de PRUEBA (elegís de una lista — ideal 1-2)");
+    console.log(bold("   Before importing — read-only actions:"));
+    console.log("1) Dry run: export statistics (does not connect to the database)");
+    console.log("2) Inspect the database (account, inbox, agents, storage)");
+    console.log("3) Preview how contact names will appear");
+    console.log("4) Import TEST chats (choose 1-2 from a list)");
     console.log("");
-    console.log(bold("   Importación — en este orden:"));
-    console.log("5)   PASO 1: mensajes de los ÚLTIMOS 12 MESES        <- empezar acá");
-    console.log("       (primero los que ya tienen contacto con nombre)");
-    console.log("6)   PASO 2: colgar los adjuntos a lo ya importado");
-    console.log("7)   PASO 3: subir los archivos al servidor");
+    console.log(bold("   Import — follow this order:"));
+    console.log("5)   STEP 1: messages from the LAST 12 MONTHS        <- start here");
+    console.log("       (chats with named contacts are imported first)");
+    console.log("6)   STEP 2: link attachments to imported messages");
+    console.log("7)   STEP 3: upload attachment files to the server");
     console.log("");
-    console.log(bold("   Después, si hace falta:"));
-    console.log("8) Mensajes del historial viejo (anterior a 12 meses)");
-    console.log("9) Importar los N chats más grandes pendientes");
+    console.log(bold("   Optional follow-up:"));
+    console.log("8) Older history (more than 12 months old)");
+    console.log("9) Import the N largest pending chats");
     console.log("");
-    console.log("10) Cambiar el NÚMERO destino (cuenta / bandeja / agente)");
-    console.log("00) Deshacer todo lo importado");
-    console.log("0)  Salir");
+    console.log("10) Change the target NUMBER (account / inbox / agent)");
+    console.log("00) Undo everything imported into the selected inbox");
+    console.log("0)  Exit");
 
-    const choice = await ask("\nElegí una opción: ");
+    const choice = await ask("\nChoose an option: ");
     console.log("");
     try {
       if (choice === "1") {
@@ -1609,26 +1606,26 @@ async function menu() {
         await runTestChatsFlow();
       } else if (choice === "5") {
         const answer = await ask(
-          "Se importan los mensajes de los últimos 12 meses a la base REAL.\n" +
-          "¿Ya hiciste el respaldo con pg_dump? Escribí SI para continuar: "
+          "This writes the last 12 months of messages to the REAL database.\n" +
+          "Have you created a pg_dump backup? Type YES to continue: "
         );
-        if (/^s[ií]$/i.test(answer)) await runImport({ meses: 12, nombresPrimero: true });
-        else info("Cancelado.");
+        if (/^(yes|si|sí)$/i.test(answer)) await runImport({ meses: 12, nombresPrimero: true });
+        else info("Cancelled.");
       } else if (choice === "6") {
         await runAttachmentPass();
       } else if (choice === "7") {
         await subirAdjuntos();
       } else if (choice === "8") {
         const answer = await ask(
-          "Se importa el historial ANTERIOR a 12 meses.\n" +
-          "Escribí SI para continuar: "
+          "This imports history older than 12 months.\n" +
+          "Type YES to continue: "
         );
-        if (/^s[ií]$/i.test(answer)) await runImport({ meses: 12, soloViejos: true, nombresPrimero: true });
-        else info("Cancelado.");
+        if (/^(yes|si|sí)$/i.test(answer)) await runImport({ meses: 12, soloViejos: true, nombresPrimero: true });
+        else info("Cancelled.");
       } else if (choice === "9") {
-        const n = Number(await ask("¿Cuántos chats? "));
+        const n = Number(await ask("How many chats? "));
         if (Number.isInteger(n) && n > 0) await runImport({ limit: n, sortBy: "biggest" });
-        else warn("Cantidad inválida.");
+        else warn("Invalid quantity.");
       } else if (choice === "10") {
         await ensureDestino({ forzar: true });
       } else if (choice === "00") {
@@ -1636,7 +1633,7 @@ async function menu() {
       } else if (choice === "0" || choice === "") {
         break;
       } else {
-        warn("Opción inválida.");
+        warn("Invalid option.");
       }
     } catch (e) {
       printError(e);
@@ -1659,7 +1656,7 @@ try {
     await menu();
   } else {
     console.error(
-      "Sin terminal interactiva. Usá un flag explícito:\n" +
+      "No interactive terminal is available. Use an explicit flag:\n" +
       "  --dry-run | --chat <jid> | --chats <jid1,jid2> | --limit N | --all | --undo"
     );
     process.exit(1);

@@ -1,7 +1,7 @@
 {
   "name": "whatsapp-backup-to-chatwoot",
   "version": "1.0.0",
-  "description": "Respaldo de WhatsApp Business e importación de contactos y chats a Chatwoot desde Windows.",
+  "description": "Back up WhatsApp Business for Android and import contacts and chats into Chatwoot from Windows.",
   "type": "module",
   "private": true,
   "repository": {
@@ -14,6 +14,7 @@
   "scripts": {
     "start": "node menu.mjs",
     "onboarding": "node menu.mjs --onboarding",
+    "contacts": "node modules/contactos/import-contacts.mjs",
     "contactos": "node modules/contactos/import-contacts.mjs",
     "chats": "node modules/chats/import-chats.mjs",
     "recon": "node modules/chats/recon.mjs",

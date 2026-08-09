@@ -1,0 +1,73 @@
+name: Bug report
+description: Report a reproducible problem without sharing private data
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is an independent community project, not official Chatwoot support.
+        **Never attach real contacts, messages, media, databases, dumps, `.env`, tokens, passwords, SSH keys, domains, IP addresses, or identifying logs.**
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety checks
+      options:
+        - label: I reproduced this on a disposable or staging installation, not production.
+          required: true
+        - label: I removed or replaced all personal data, credentials, and server identifiers.
+          required: true
+        - label: I searched existing issues and read the troubleshooting guide.
+          required: true
+  - type: input
+    id: project_version
+    attributes:
+      label: Project version
+      placeholder: v1.0.0
+    validations:
+      required: true
+  - type: input
+    id: chatwoot_version
+    attributes:
+      label: Chatwoot version
+      placeholder: v4.16.2
+    validations:
+      required: true
+  - type: input
+    id: postgres_version
+    attributes:
+      label: PostgreSQL version
+      description: Run SELECT version(); if you can do so safely.
+      placeholder: Not recorded
+  - type: input
+    id: android_version
+    attributes:
+      label: Android and WhatsApp Business versions
+      placeholder: Android 16; WhatsApp Business version ...
+  - type: input
+    id: environment
+    attributes:
+      label: Windows, Node.js, and Python versions
+      placeholder: Windows 11; Node.js 24.x; Python 3.12.x
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Use fictional values and the smallest safe example.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true

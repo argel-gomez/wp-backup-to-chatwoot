@@ -1,21 +1,20 @@
 #!/usr/bin/env python3
 """
-wa_archive.py - Respaldo y extraccion de WhatsApp Business (Android, sin root).
+wa_archive.py - WhatsApp Business backup and extraction (Android, no root).
 
-Fases:
-  wizard   Asistente interactivo: valida la carpeta, pide la clave, elige
-           formato y exporta con barra de progreso
-  pull     Extrae Databases/ y Media/ del telefono via adb (multimedia incremental)
-  verify   Igual que pull pero sin descargar: solo reporta lo que falta
-  decrypt  Descifra msgstore.db.crypt15 con la clave de 64 digitos
-  export   Genera el archivo legible (HTML/TXT/JSON/CSV/Markdown/Chatwoot)
+Phases:
+  wizard   Interactive wizard: validates folders, requests the key, selects a
+           format, and exports with a progress bar
+  pull     Extracts Databases/ and Media/ from the phone through adb
+  verify   Checks which files are missing without downloading anything
+  decrypt  Decrypts msgstore.db.crypt15 with the 64-character key
+  export   Generates HTML/TXT/JSON/CSV/Markdown/Chatwoot output
 
-Requisitos: adb en PATH (solo para pull/verify). Las dependencias de Python
-(questionary, rich, wa-crypt-tools) se instalan solas si faltan.
-La clave de 64 digitos se lee de la variable de entorno WA_KEY o se pide de
-forma interactiva; nunca se escribe en disco ni se registra en el log.
+Requirements: adb on PATH for pull/verify. Missing Python dependencies are
+installed automatically. The key is read from WA_KEY or requested interactively;
+it is never written to disk or included in logs.
 
-Hecho por github.com/argel-gomez - software libre, licencia MIT (ver LICENSE).
+Created by github.com/argel-gomez - MIT-licensed open-source software.
 """
 
 from __future__ import annotations
@@ -77,7 +76,7 @@ def die(msg: str) -> "NoReturn":
 def run(cmd: list[str], check: bool = True) -> subprocess.CompletedProcess:
     res = subprocess.run(cmd, capture_output=True, text=True)
     if check and res.returncode != 0:
-        raise WaError("E05", f"fallo el comando: {' '.join(cmd[:3])}...",
+        raise WaError("E05", f"command failed: {' '.join(cmd[:3])}...",
                       res.stderr.strip())
     return res
 
@@ -94,10 +93,10 @@ def ensure_pip() -> None:
     try:
         importlib.import_module("pip")
     except ImportError:
-        print("pip no esta disponible, instalandolo con ensurepip...")
+        print("pip is unavailable; installing it with ensurepip...")
         res = run([sys.executable, "-m", "ensurepip", "--upgrade"], check=False)
         if res.returncode != 0:
-            raise WaError("E91", "no se pudo habilitar pip con ensurepip",
+            raise WaError("E91", "could not enable pip with ensurepip",
                           res.stderr.strip())
 
 
@@ -139,10 +138,9 @@ def refresh_import_paths() -> None:
 def relaunch_after_install(pending: list[str]) -> "NoReturn":
     """Ultimo recurso: reiniciar el interprete para que cargue lo instalado."""
     if os.environ.get(RELAUNCH_FLAG):
-        raise WaError("E91", f"se instalo {', '.join(pending)} pero sigue sin "
-                             "poder importarse.",
-                      "Cerra esta ventana, abrila de nuevo y volve a intentar.")
-    print("Reiniciando para cargar las dependencias recien instaladas...")
+        raise WaError("E91", f"{', '.join(pending)} was installed but still cannot be imported.",
+                      "Close this window, reopen it, and try again.")
+    print("Restarting to load the newly installed dependencies...")
     env = {**os.environ, RELAUNCH_FLAG: "1"}
     res = subprocess.run([sys.executable, *sys.argv], env=env)
     sys.exit(res.returncode)
@@ -186,13 +184,13 @@ def ensure_wadecrypt() -> list[str]:
     cmd = wadecrypt_cmd()
     if cmd:
         return cmd
-    print("Instalando wa-crypt-tools (provee 'wadecrypt')...")
+    print("Installing wa-crypt-tools (provides 'wadecrypt')...")
     res = pip_install("wa-crypt-tools")
     refresh_import_paths()
     cmd = wadecrypt_cmd()
     if res.returncode != 0 or not cmd:
-        raise WaError("E92", "no se pudo instalar wa-crypt-tools o 'wadecrypt' "
-                             "sigue sin encontrarse", res.stderr.strip())
+        raise WaError("E92", "could not install wa-crypt-tools, or 'wadecrypt' is still unavailable",
+                      res.stderr.strip())
     return cmd
 
 
@@ -200,10 +198,10 @@ def ensure_dependencies() -> None:
     ensure_pip()
     faltantes = [(m, p) for m, p in PIP_PACKAGES.items() if not module_available(m)]
     for module_name, pip_name in faltantes:
-        print(f"Instalando dependencia faltante: {pip_name}...")
+        print(f"Installing missing dependency: {pip_name}...")
         res = pip_install(pip_name)
         if res.returncode != 0:
-            raise WaError("E91", f"no se pudo instalar {pip_name}",
+            raise WaError("E91", f"could not install {pip_name}",
                           res.stderr.strip())
     ensure_wadecrypt()
 
@@ -220,25 +218,25 @@ def ensure_dependencies() -> None:
 
 def preflight() -> None:
     if not shutil.which("adb"):
-        raise WaError("E01", "adb no esta en el PATH.",
-                      f"Descargalo de {ADB_URL}, descomprimilo y agregalo al PATH.")
+        raise WaError("E01", "adb is not on PATH.",
+                      f"Download it from {ADB_URL}, extract it, and add it to PATH.")
     devices = [
         ln for ln in adb("devices").splitlines()[1:]
         if ln.strip() and not ln.startswith("*")
     ]
     online = [d for d in devices if d.split()[-1] == "device"]
     if not online:
-        raise WaError("E02", "ningun dispositivo autorizado.",
-                      "Revisa el cable y acepta la huella RSA en el telefono.")
+        raise WaError("E02", "no authorized Android device was found.",
+                      "Check the USB cable, enable USB debugging, and accept the RSA fingerprint on the phone.")
     if len(online) > 1:
-        raise WaError("E03", f"hay {len(online)} dispositivos conectados.",
-                      "Usa la variable de entorno ANDROID_SERIAL para elegir uno.")
-    log(f"dispositivo: {online[0].split()[0]}")
+        raise WaError("E03", f"{len(online)} devices are connected.",
+                      "Use the ANDROID_SERIAL environment variable to select one.")
+    log(f"device: {online[0].split()[0]}")
 
     probe = adb("shell", "ls", f"'{REMOTE_ROOT}'", check=False)
     if "No such file" in probe or not probe.strip():
-        raise WaError("E04", f"no existe {REMOTE_ROOT} en el telefono.",
-                      f"Verifica el paquete ({PKG}).")
+        raise WaError("E04", f"{REMOTE_ROOT} does not exist on the phone.",
+                      f"Check the package name ({PKG}).")
 
 
 def check_backup_freshness() -> None:
@@ -247,14 +245,14 @@ def check_backup_freshness() -> None:
               check=False)
     parts = out.strip().split(None, 1)
     if len(parts) != 2 or not parts[0].isdigit():
-        log("AVISO: no se encontro msgstore.db.crypt15. Activa la copia "
-            "cifrada E2E con clave de 64 digitos y pulsa 'Guardar' en la app.")
+        log("WARNING: msgstore.db.crypt15 was not found. Enable the end-to-end encrypted "
+            "backup with a 64-digit key and tap Save in WhatsApp Business.")
         return
     age_h = (datetime.now(timezone.utc).timestamp() - int(parts[0])) / 3600
-    log(f"copia local: {age_h:.1f} h de antiguedad")
+    log(f"local backup age: {age_h:.1f} hours")
     if age_h > STALE_HOURS:
-        log("AVISO: la copia es vieja. HyperOS pudo matar el proceso "
-            "nocturno; pon la app en 'Sin restricciones' de bateria.")
+        log("WARNING: the backup is old. Android may have stopped the background process; "
+            "set WhatsApp Business battery usage to Unrestricted.")
 
 
 def remote_listing() -> dict[str, int]:
@@ -283,10 +281,10 @@ def pull(dest: Path, dry_run: bool = False) -> None:
     check_backup_freshness()
     dest.mkdir(parents=True, exist_ok=True)
 
-    log("listando archivos remotos...")
+    log("listing remote files...")
     remote = remote_listing()
     total_gb = sum(remote.values()) / 1e9
-    log(f"{len(remote)} archivos, {total_gb:.2f} GB en el telefono")
+    log(f"{len(remote)} files, {total_gb:.2f} GB on the phone")
 
     # las bases se re-extraen siempre; la multimedia solo si falta o cambio
     pending = []
@@ -297,17 +295,17 @@ def pull(dest: Path, dry_run: bool = False) -> None:
         elif not local.exists() or local.stat().st_size != size:
             pending.append(rel)
 
-    log(f"{len(pending)} archivos por extraer "
+    log(f"{len(pending)} files to extract "
         f"({sum(remote[r] for r in pending) / 1e9:.2f} GB)")
 
     if dry_run:
         report = dest / "_faltantes.txt"
         report.write_text("\n".join(sorted(pending)), encoding="utf-8")
-        log(f"MODO VERIFICACION: no se descargo nada. Lista en {report}")
+        log(f"VERIFICATION MODE: nothing was downloaded. List saved to {report}")
         if pending:
-            log("Estos archivos faltan o quedaron truncados en la copia manual.")
+            log("These files are missing or were truncated in the manual copy.")
         else:
-            log("La copia local esta completa. Nada que traer.")
+            log("The local copy is complete. Nothing to transfer.")
         return
 
     failures = []
@@ -331,8 +329,8 @@ def pull(dest: Path, dry_run: bool = False) -> None:
     (dest / "_manifest.json").write_text(json.dumps(manifest, indent=2))
 
     if failures:
-        log(f"AVISO: {len(failures)} archivos fallaron (ver _manifest.json)")
-    log(f"extraccion lista en {dest}")
+        log(f"WARNING: {len(failures)} files failed (see _manifest.json)")
+    log(f"extraction complete in {dest}")
 
 
 # --------------------------------------------------------------------------
@@ -345,12 +343,12 @@ def normalize_key(raw: str) -> str:
 
 def validate_key(key: str) -> None:
     if not key:
-        raise WaError("E20", "no se proporciono la clave.",
-                      "Define WA_KEY o usa el modo wizard.")
+        raise WaError("E20", "no encryption key was provided.",
+                      "Set WA_KEY or use wizard mode.")
     if not re.fullmatch(r"[0-9a-fA-F]{64}", key):
-        raise WaError("E21", f"la clave debe tener 64 caracteres hexadecimales "
-                             f"(recibidos: {len(key)}).",
-                      "Pegala corrida, sin espacios ni saltos de linea.")
+        raise WaError("E21", f"the key must contain 64 hexadecimal characters "
+                             f"(received: {len(key)}).",
+                      "Paste it without spaces or line breaks.")
 
 
 def decrypt(db_dir: Path, out_db: Path, key: str | None = None) -> None:
@@ -359,26 +357,25 @@ def decrypt(db_dir: Path, out_db: Path, key: str | None = None) -> None:
 
     enc = db_dir / "msgstore.db.crypt15"
     if not enc.exists():
-        raise WaError("E12", f"no existe {enc}",
-                      "Activa la copia cifrada E2E en WhatsApp y volve a copiar "
-                      "la carpeta Databases.")
+        raise WaError("E12", f"{enc} does not exist",
+                      "Enable the end-to-end encrypted WhatsApp backup and copy the Databases folder again.")
     cmd = wadecrypt_cmd()
     if not cmd:
-        raise WaError("E22", "wadecrypt no encontrado.",
+        raise WaError("E22", "wadecrypt was not found.",
                       "pip install wa-crypt-tools")
 
-    log(f"descifrando {enc.name} ({enc.stat().st_size / 1e6:.1f} MB)...")
+    log(f"decrypting {enc.name} ({enc.stat().st_size / 1e6:.1f} MB)...")
     out_db.parent.mkdir(parents=True, exist_ok=True)
     res = run([*cmd, key, str(enc), str(out_db)], check=False)
     if res.returncode != 0:
-        raise WaError("E23", "wadecrypt fallo al descifrar la base.",
+        raise WaError("E23", "wadecrypt could not decrypt the database.",
                       res.stderr.strip().replace(key, "***"))
 
     with sqlite3.connect(out_db) as cx:
         if cx.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
-            raise WaError("E24", "la base descifrada no pasa integrity_check.",
-                          "Casi siempre significa que la clave es incorrecta.")
-    log(f"base lista: {out_db}")
+            raise WaError("E24", "the decrypted database failed integrity_check.",
+                          "This usually means the encryption key is incorrect.")
+    log(f"database ready: {out_db}")
 
 
 # --------------------------------------------------------------------------
@@ -423,17 +420,17 @@ WHERE timestamp > 0
 """
 ORDER_LEGACY = "ORDER BY key_remote_jid, timestamp"
 
-MEDIA_TYPES = {1: "imagen", 2: "audio", 3: "video", 4: "contacto",
-               5: "ubicacion", 9: "documento", 13: "gif", 20: "sticker"}
+MEDIA_TYPES = {1: "image", 2: "audio", 3: "video", 4: "contact",
+               5: "location", 9: "document", 13: "gif", 20: "sticker"}
 
 
 def open_db(db: Path) -> sqlite3.Connection:
     if not db.is_file():
-        raise WaError("E30", f"no existe la base descifrada: {db}")
+        raise WaError("E30", f"decrypted database does not exist: {db}")
     try:
         cx = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     except sqlite3.Error as exc:
-        raise WaError("E30", f"no se pudo abrir {db}", str(exc))
+        raise WaError("E30", f"could not open {db}", str(exc))
     cx.row_factory = sqlite3.Row
     return cx
 
@@ -445,8 +442,8 @@ def detect_schema(cx: sqlite3.Connection) -> str:
         return "modern"
     if "messages" in tables:
         return "legacy"
-    raise WaError("E31", "esquema no reconocido en msgstore.db",
-                  f"tablas encontradas: {', '.join(sorted(tables)) or '(ninguna)'}")
+    raise WaError("E31", "unrecognized msgstore.db schema",
+                  f"tables found: {', '.join(sorted(tables)) or '(none)'}")
 
 
 def schema_query(schema: str) -> tuple[str, str]:
@@ -459,7 +456,7 @@ def count_rows(cx: sqlite3.Connection, schema: str) -> int:
     try:
         return cx.execute(f"SELECT COUNT(*) FROM ({base})").fetchone()[0]
     except sqlite3.Error as exc:
-        raise WaError("E32", "fallo el conteo de mensajes", str(exc))
+        raise WaError("E32", "message count query failed", str(exc))
 
 
 def count_messages(db: Path) -> int:
@@ -537,10 +534,10 @@ def parse_vcf(path: str | Path) -> dict:
         try:
             raw = Path(path).read_text(encoding="cp1252")
         except (UnicodeDecodeError, OSError) as exc:
-            warnings.append(f"no se pudo leer {path}: {exc}")
+            warnings.append(f"could not read {path}: {exc}")
             return {"contacts": contacts, "warnings": warnings}
     except OSError as exc:
-        warnings.append(f"no se pudo leer {path}: {exc}")
+        warnings.append(f"could not read {path}: {exc}")
         return {"contacts": contacts, "warnings": warnings}
 
     fn = n = org = None
@@ -733,7 +730,7 @@ def iter_rows(cx: sqlite3.Connection, schema: str, media_dir: Path,
     try:
         rows = cx.execute(f"{base} {order}")
     except sqlite3.Error as exc:
-        raise WaError("E32", "fallo la consulta de mensajes", str(exc))
+        raise WaError("E32", "message query failed", str(exc))
 
     # cache por JID: un chat o remitente se repite en miles de filas, no
     # hace falta llamar contacts.lookup() en cada una
@@ -751,13 +748,13 @@ def iter_rows(cx: sqlite3.Connection, schema: str, media_dir: Path,
         when = datetime.fromtimestamp(r["ts"] / 1000, timezone.utc)
         resolved = resolve_media(media_dir, r["media_path"], index)
         chat_name = resolve_name(r["chat_id"]) or r["chat_name"]
-        sender = r["sender"] or ("yo" if r["from_me"] else r["chat_id"])
-        sender = sender if sender == "yo" else (resolve_name(sender) or sender)
+        sender = r["sender"] or ("me" if r["from_me"] else r["chat_id"])
+        sender = sender if sender == "me" else (resolve_name(sender) or sender)
         yield {
             "chat_id": r["chat_id"],
             "chat_name": chat_name,
             "ts_utc": when.isoformat(),
-            "direction": "saliente" if r["from_me"] else "entrante",
+            "direction": "outgoing" if r["from_me"] else "incoming",
             "sender": sender,
             "type": MEDIA_TYPES.get(r["mtype"], "texto" if not r["mtype"] else str(r["mtype"])),
             "body": r["body"],
@@ -861,11 +858,11 @@ def write_html(rows: Iterable[dict], outdir: Path, root: Path) -> None:
             f"<title>{html.escape(name)}</title>",
             "<link rel='stylesheet' href='../style.css'>",
             f"<h1>{html.escape(name)}</h1>",
-            f"<p class='meta'>{len(msgs)} mensajes | {html.escape(chat_id)}</p>",
-            "<p><a href='../index.html'>&larr; indice</a></p>",
+            f"<p class='meta'>{len(msgs)} messages | {html.escape(chat_id)}</p>",
+            "<p><a href='../index.html'>&larr; index</a></p>",
         ]
         for m in msgs:
-            cls = "out" if m["direction"] == "saliente" else "in"
+            cls = "out" if m["direction"] == "outgoing" else "in"
             parts.append(f"<div class='m {cls}'>")
             parts.append(f"<div class='meta'>{m['ts_utc'][:19].replace('T', ' ')}"
                          f" &middot; {html.escape(m['sender'])}</div>")
@@ -880,15 +877,15 @@ def write_html(rows: Iterable[dict], outdir: Path, root: Path) -> None:
                                  f"{html.escape(m['type'])}: "
                                  f"{html.escape(Path(m['media']).name)}</a>")
             elif m["media_missing"]:
-                parts.append("<div class='miss'>[adjunto ausente]</div>")
+                parts.append("<div class='miss'>[missing attachment]</div>")
             parts.append("</div>")
         (chatdir / fname).write_text("\n".join(parts), encoding="utf-8")
 
-    idx = ["<!doctype html><meta charset='utf-8'><title>Archivo WhatsApp Business</title>",
+    idx = ["<!doctype html><meta charset='utf-8'><title>WhatsApp Business Archive</title>",
            "<link rel='stylesheet' href='style.css'>",
-           "<h1>Archivo WhatsApp Business</h1>",
-           f"<p class='meta'>{len(entries)} conversaciones &middot; "
-           f"generado {datetime.now():%Y-%m-%d %H:%M}</p><ul>"]
+           "<h1>WhatsApp Business Archive</h1>",
+           f"<p class='meta'>{len(entries)} conversations &middot; "
+           f"generated {datetime.now():%Y-%m-%d %H:%M}</p><ul>"]
     for name, count, fname in entries:
         idx.append(f"<li><a href='chats/{fname}'>{html.escape(name)}</a> "
                    f"<span class='meta'>({count})</span></li>")
@@ -906,18 +903,18 @@ def write_txt(rows: Iterable[dict], outdir: Path, root: Path) -> None:
         name = msgs[0]["chat_name"]
         fname = f"{safe_slug(chat_id)}.txt"
         entries.append((name, len(msgs), fname))
-        lines = [f"{name} ({chat_id})", f"{len(msgs)} mensajes", "-" * 60, ""]
+        lines = [f"{name} ({chat_id})", f"{len(msgs)} messages", "-" * 60, ""]
         for m in msgs:
             when = m["ts_utc"][:19].replace("T", " ")
             lines.append(f"[{when}] {m['direction']} {m['sender']}: {m['body']}")
             if m["media"]:
                 lines.append(f"    [{m['type']}: {localize_media(root, m['media'], outdir, chatdir)}]")
             elif m["media_missing"]:
-                lines.append("    [adjunto ausente]")
+                lines.append("    [missing attachment]")
         (chatdir / fname).write_text("\n".join(lines), encoding="utf-8")
 
-    idx = ["Archivo WhatsApp Business",
-           f"{len(entries)} conversaciones - generado {datetime.now():%Y-%m-%d %H:%M}",
+    idx = ["WhatsApp Business Archive",
+           f"{len(entries)} conversations - generated {datetime.now():%Y-%m-%d %H:%M}",
            "-" * 60, ""]
     for name, count, fname in entries:
         idx.append(f"{count:>7}  {name}  ->  chats_txt/{fname}")
@@ -934,8 +931,8 @@ def write_markdown(rows: Iterable[dict], outdir: Path, root: Path) -> None:
         name = msgs[0]["chat_name"]
         fname = f"{safe_slug(chat_id)}.md"
         entries.append((name, len(msgs), fname))
-        parts = [f"# {name}", "", f"`{chat_id}` - {len(msgs)} mensajes", "",
-                 "[<- indice](../index.md)", ""]
+        parts = [f"# {name}", "", f"`{chat_id}` - {len(msgs)} messages", "",
+                 "[<- index](../index.md)", ""]
         for m in msgs:
             when = m["ts_utc"][:19].replace("T", " ")
             parts.append(f"**{m['direction']} - {m['sender']}** _{when}_")
@@ -951,13 +948,13 @@ def write_markdown(rows: Iterable[dict], outdir: Path, root: Path) -> None:
                              else f"[{label}]({rel})")
             elif m["media_missing"]:
                 parts.append("")
-                parts.append("> _[adjunto ausente]_")
+                parts.append("> _[missing attachment]_")
             parts.append("")
         (chatdir / fname).write_text("\n".join(parts), encoding="utf-8")
 
-    idx = ["# Archivo WhatsApp Business", "",
-           f"{len(entries)} conversaciones - generado {datetime.now():%Y-%m-%d %H:%M}",
-           "", "| Conversacion | Mensajes |", "|---|---:|"]
+    idx = ["# WhatsApp Business Archive", "",
+           f"{len(entries)} conversations - generated {datetime.now():%Y-%m-%d %H:%M}",
+           "", "| Conversation | Messages |", "|---|---:|"]
     for name, count, fname in entries:
         idx.append(f"| [{name}](chats_md/{fname}) | {count} |")
     (outdir / "index.md").write_text("\n".join(idx), encoding="utf-8")
@@ -979,7 +976,7 @@ def write_chatwoot(rows: Iterable[dict], outdir: Path, root: Path) -> None:
         for m in msgs:
             msg = {
                 "content": m["body"],
-                "message_type": "outgoing" if m["direction"] == "saliente" else "incoming",
+                "message_type": "outgoing" if m["direction"] == "outgoing" else "incoming",
                 "created_at": int(datetime.fromisoformat(m["ts_utc"]).timestamp()),
                 "sender": m["sender"],
                 "private": False,
@@ -1022,15 +1019,14 @@ def load_contacts(path: Path) -> ContactIndex | None:
     utilizable devuelve None y la exportacion sigue sin resolver nombres."""
     idx, warnings = ContactIndex.from_vcf(path)
     for w in warnings:
-        log(f"AVISO (contactos): {w}")
+        log(f"WARNING (contacts): {w}")
     if idx.stats["contacts_parsed"] == 0:
-        log(f"AVISO: no se encontraron contactos utilizables en {path}; "
-            "se sigue sin resolver nombres")
+        log(f"WARNING: no usable contacts were found in {path}; continuing without name resolution")
         return None
     collided = idx.stats["collisions_exact"] + idx.stats["collisions_suffix"]
-    msg = f"contactos: {idx.stats['contacts_parsed']} cargados"
+    msg = f"contacts: {idx.stats['contacts_parsed']} loaded"
     if collided:
-        msg += f", {collided} numero(s) sin resolver por coincidencia ambigua"
+        msg += f", {collided} number(s) unresolved because of ambiguous matches"
     log(msg)
     return idx
 
@@ -1039,21 +1035,21 @@ def export(media_dir: Path, db: Path, outdir: Path, fmt: str | None = None,
            progress_cb: Callable[[], None] | None = None,
            contacts: ContactIndex | None = None) -> dict:
     if fmt is not None and fmt not in FORMAT_WRITERS:
-        raise WaError("E41", f"formato desconocido: {fmt}",
-                      f"validos: {', '.join(FORMAT_WRITERS)}")
+        raise WaError("E41", f"unknown format: {fmt}",
+                      f"valid formats: {', '.join(FORMAT_WRITERS)}")
     try:
         outdir.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
-        raise WaError("E40", f"no se puede crear la carpeta de salida: {outdir}",
+        raise WaError("E40", f"could not create the output folder: {outdir}",
                       str(exc))
 
     cx = open_db(db)
     try:
         schema = detect_schema(cx)
-        log(f"esquema detectado: {schema}")
+        log(f"detected schema: {schema}")
 
         index = build_media_index(media_dir)
-        log(f"indice de multimedia: {len(index)} archivos")
+        log(f"media index: {len(index)} files")
 
         stats = {"messages": 0, "media_missing": 0}
         chat_ids: set[str] = set()
@@ -1078,12 +1074,12 @@ def export(media_dir: Path, db: Path, outdir: Path, fmt: str | None = None,
             else:
                 FORMAT_WRITERS[fmt](tracked(), outdir, media_dir)
         except OSError as exc:
-            raise WaError("E42", "fallo la escritura de la exportacion", str(exc))
+            raise WaError("E42", "failed to write the export", str(exc))
 
-        log(f"{stats['messages']} mensajes en {len(chat_ids)} conversaciones")
+        log(f"{stats['messages']} messages in {len(chat_ids)} conversations")
         if stats["media_missing"]:
-            log(f"AVISO: {stats['media_missing']} adjuntos referenciados pero "
-                "ausentes (borrados del telefono o limpiados por HyperOS)")
+            log(f"WARNING: {stats['media_missing']} referenced attachments are missing "
+                "(deleted from the phone before backup)")
 
         summary = {
             "exported_at": datetime.now(timezone.utc).isoformat(),
@@ -1094,7 +1090,7 @@ def export(media_dir: Path, db: Path, outdir: Path, fmt: str | None = None,
             "media_missing": stats["media_missing"],
         }
         (outdir / "_summary.json").write_text(json.dumps(summary, indent=2))
-        log(f"exportacion lista en {outdir}")
+        log(f"export ready in {outdir}")
         return summary
     finally:
         cx.close()
@@ -1187,12 +1183,12 @@ def beautify_console() -> None:
 # --------------------------------------------------------------------------
 
 FORMAT_CHOICES = [
-    ("HTML - sitio navegable con fotos y adjuntos", "html"),
-    ("TXT  - texto plano, un archivo por conversacion", "txt"),
-    ("JSON - un mensaje por linea (JSONL)", "json"),
-    ("CSV  - tabla para Excel / Sheets", "csv"),
-    ("Markdown - un .md por conversacion", "markdown"),
-    ("Chatwoot - JSON para importar despues (solo archivo, sin API)", "chatwoot"),
+    ("HTML - browsable site with images and attachments", "html"),
+    ("TXT  - plain text, one file per conversation", "txt"),
+    ("JSON - one message per line (JSONL)", "json"),
+    ("CSV  - table for Excel or Sheets", "csv"),
+    ("Markdown - one .md file per conversation", "markdown"),
+    ("Chatwoot - JSON for later import (file only, no API)", "chatwoot"),
 ]
 
 
@@ -1259,22 +1255,21 @@ def prompt_root_folder() -> Path:
     def check(text: str) -> bool | str:
         d = clean_path_input(text)
         if not d.is_dir():
-            return f"[E10] la carpeta no existe: {d}"
+            return f"[E10] folder does not exist: {d}"
         if not (d / "Databases" / "msgstore.db.crypt15").is_file():
-            return ("[E12] no encuentro Databases/msgstore.db.crypt15 aca. "
-                    "Elegi la carpeta del respaldo (la que contiene Databases, "
-                    "Media y Backups).")
+            return ("[E12] Databases/msgstore.db.crypt15 was not found here. "
+                    "Choose the backup folder that contains Databases, Media, and Backups.")
         if not (d / "Media").is_dir():
-            return "[E11] falta la subcarpeta 'Media' dentro de esta carpeta."
+            return "[E11] the 'Media' subfolder is missing."
         return True
 
     import questionary
     answer = questionary.path(
-        "Carpeta del respaldo (la que contiene Databases, Media y Backups):",
+        "Backup folder (the one containing Databases, Media, and Backups):",
         default=drop_backup_default(),
         validate=check, only_directories=True, style=questionary_style()).ask()
     if answer is None:
-        raise WaError("E90", "cancelado por el usuario", exit_code=130)
+        raise WaError("E90", "cancelled by the user", exit_code=130)
     return clean_path_input(answer).resolve()
 
 
@@ -1289,10 +1284,10 @@ def prompt_key() -> str:
             return f"[{e.code}] {e.message}"
 
     answer = questionary.password(
-        "Clave de 64 caracteres del respaldo cifrado (se puede pegar):",
+        "64-character encrypted backup key (paste is supported):",
         validate=check, style=questionary_style()).ask()
     if answer is None:
-        raise WaError("E90", "cancelado por el usuario", exit_code=130)
+        raise WaError("E90", "cancelled by the user", exit_code=130)
     return normalize_key(answer)
 
 
@@ -1304,18 +1299,18 @@ def prompt_contacts_path() -> Path | None:
         if not text:
             return True  # opcional, Enter para omitir
         if not clean_path_input(text).is_file():
-            return f"no se encontro el archivo: {clean_path_input(text)}"
+            return f"file not found: {clean_path_input(text)}"
         return True
 
     default = drop_contacts_default()
-    message = ("Contactos .vcf para resolver nombres (encontrado en PLACE-HERE-2 -- "
-               "Enter para usarlo, borra la linea para omitir):" if default else
-               "Contactos .vcf para resolver nombres (opcional, Enter para omitir):")
+    message = ("Contacts .vcf for name resolution (found in PLACE-HERE-2; "
+               "press Enter to use it or clear the line to skip):" if default else
+               "Contacts .vcf for name resolution (optional; Enter to skip):")
     answer = questionary.path(
         message, default=default,
         validate=check, style=questionary_style()).ask()
     if answer is None:
-        raise WaError("E90", "cancelado por el usuario", exit_code=130)
+        raise WaError("E90", "cancelled by the user", exit_code=130)
     answer = answer.strip()
     return clean_path_input(answer) if answer else None
 
@@ -1324,10 +1319,10 @@ def prompt_format() -> str:
     import questionary
 
     answer = questionary.select(
-        "Formato de exportacion (uno por sesion):",
+        "Export format (one per pass):",
         choices=[label for label, _ in FORMAT_CHOICES], style=questionary_style()).ask()
     if answer is None:
-        raise WaError("E90", "cancelado por el usuario", exit_code=130)
+        raise WaError("E90", "cancelled by the user", exit_code=130)
     return dict(FORMAT_CHOICES)[answer]
 
 
@@ -1335,7 +1330,7 @@ def prompt_repeat() -> bool:
     import questionary
 
     answer = questionary.confirm(
-        "Exportar tambien en otro formato (misma base ya descifrada)?",
+        "Export another format using the same decrypted database?",
         default=False, style=questionary_style()).ask()
     return bool(answer)
 
@@ -1344,17 +1339,17 @@ def prompt_output_folder(default: Path) -> Path:
     import questionary
 
     while True:
-        answer = questionary.path("Carpeta donde dejar la exportacion:",
+        answer = questionary.path("Export output folder:",
                                   default=str(default), only_directories=True,
                                   style=questionary_style()).ask()
         if answer is None:
-            raise WaError("E90", "cancelado por el usuario", exit_code=130)
+            raise WaError("E90", "cancelled by the user", exit_code=130)
         out = clean_path_input(answer).resolve()
         try:
             out.mkdir(parents=True, exist_ok=True)
             return out
         except OSError as exc:
-            print(f"[E40] no se puede usar esa carpeta: {exc}")
+            print(f"[E40] this folder cannot be used: {exc}")
 
 
 def wizard() -> None:
@@ -1368,23 +1363,21 @@ def wizard() -> None:
     beautify_console()
     console = Console(highlight=False)
 
-    banner = gradient_text("Archivo de WhatsApp Business", WA_TEAL, WA_GREEN)
+    banner = gradient_text("WhatsApp Business Archive", WA_TEAL, WA_GREEN)
     console.print()
     console.print(Panel(banner, subtitle=f"[dim]{CREDIT}[/]",
                         border_style=WA_GREEN, padding=(1, 4)))
     console.print()
-    console.print(f"[bold {WA_AMBER}][AVISO][/] la exportacion va a contener conversaciones "
-                  f"reales de clientes. No la subas a ningun repositorio ni la compartas "
-                  f"sin criterio.\n")
+    console.print(f"[bold {WA_AMBER}][WARNING][/] the export contains real conversations. "
+                  f"Never upload it to a repository or share it without proper authorization.\n")
 
     if os.environ.get("WT_SESSION"):
-        console.print(f"[dim]Tip: si el texto se ve chico, manten Ctrl y gira la rueda "
-                      f"del mouse (o Ctrl y '+'). Windows Terminal lo recuerda para "
-                      f"la proxima.[/]\n")
+        console.print(f"[dim]Tip: if the text is too small, hold Ctrl and use the mouse wheel "
+                      f"(or Ctrl and '+'). Windows Terminal remembers the setting.[/]\n")
 
     try:
         root = prompt_root_folder()
-        console.print(f"[bold {WA_GREEN}][OK][/] carpeta valida: {root}")
+        console.print(f"[bold {WA_GREEN}][OK][/] valid folder: {root}")
 
         db_path = root / "_wa_decrypted.db"
         while True:
@@ -1398,11 +1391,11 @@ def wizard() -> None:
                 console.print(f"[bold {WA_RED}]Error {e.code}[/]: {e.message}")
                 if e.detail:
                     console.print(f"[dim]{e.detail}[/]")
-                console.print("Volve a ingresar la clave.\n")
+                console.print("Enter the key again.\n")
             finally:
                 key = None
 
-        console.print(f"[bold {WA_GREEN}][OK][/] clave correcta, base descifrada\n")
+        console.print(f"[bold {WA_GREEN}][OK][/] correct key; database decrypted\n")
 
         contacts_path = prompt_contacts_path()
         contacts = load_contacts(contacts_path) if contacts_path else None
@@ -1418,7 +1411,7 @@ def wizard() -> None:
                           BarColumn(complete_style=WA_GREEN, finished_style=WA_GREEN),
                           TaskProgressColumn(), MofNCompleteColumn(),
                           console=console) as progress:
-                task = progress.add_task(f"Exportando a {fmt}...", total=total)
+                task = progress.add_task(f"Exporting to {fmt}...", total=total)
                 summary = export(root / "Media", db_path, out_dir, fmt,
                                  progress_cb=lambda: progress.advance(task),
                                  contacts=contacts)
@@ -1432,16 +1425,15 @@ def wizard() -> None:
                                                                 encoding="utf-8")
 
             console.print(Panel(
-                f"[bold {WA_GREEN}][OK] Listo[/] - {summary['messages']} mensajes en "
-                f"{summary['chats']} conversaciones\n"
-                f"Salida: {out_dir}"
-                + (f"\n[bold {WA_AMBER}][AVISO][/] {summary['media_missing']} adjuntos ausentes "
-                   "(borrados del telefono antes del respaldo)"
+                f"[bold {WA_GREEN}][OK] Done[/] - {summary['messages']} messages in "
+                f"{summary['chats']} conversations\n"
+                f"Output: {out_dir}"
+                + (f"\n[bold {WA_AMBER}][WARNING][/] {summary['media_missing']} missing attachments "
+                   "(deleted from the phone before the backup)"
                    if summary["media_missing"] else ""),
                 border_style=WA_GREEN, padding=(1, 2)))
-            console.print("[dim]Esta carpeta es independiente: copia sus propios adjuntos "
-                          "en attachments/, asi que la podes mover o copiar (ej. al NAS) "
-                          "sin la carpeta cruda.[/]\n")
+            console.print("[dim]This folder is self-contained: attachments are copied into "
+                          "attachments/, so it can be moved or copied without the raw backup folder.[/]\n")
 
             if not prompt_repeat():
                 break
@@ -1453,13 +1445,13 @@ def wizard() -> None:
             console.print(f"[dim]{e.detail}[/]")
         sys.exit(e.exit_code)
     except KeyboardInterrupt:
-        console.print(f"\n[{WA_AMBER}]Cancelado.[/] [dim](E90)[/]")
+        console.print(f"\n[{WA_AMBER}]Cancelled.[/] [dim](E90)[/]")
         sys.exit(130)
     except Exception as exc:
         if type(exc).__name__ == "NoConsoleScreenBufferError":
-            console.print(f"[bold {WA_RED}]Error E95[/]: el asistente necesita una consola real.")
-            console.print("[dim]Abrilo en PowerShell o cmd.exe. No funciona con la salida "
-                          "redirigida ni dentro de Git Bash/MSYS.[/]")
+            console.print(f"[bold {WA_RED}]Error E95[/]: the wizard requires a real console.")
+            console.print("[dim]Open it in PowerShell or cmd.exe. Redirected output and "
+                          "Git Bash/MSYS are not supported.[/]")
             sys.exit(1)
         console.print(f"[bold {WA_RED}]Error E00[/]: {type(exc).__name__}: {exc}")
         sys.exit(1)
@@ -1473,20 +1465,17 @@ def main() -> None:
     ap.add_argument("phase", choices=["wizard", "verify", "pull", "decrypt",
                                       "export", "all"])
     ap.add_argument("--root", type=Path, default=Path("./wa-raw"),
-                    help="destino de la extraccion cruda")
+                    help="raw extraction destination")
     ap.add_argument("--db", type=Path, default=Path("./msgstore.db"))
     ap.add_argument("--out", type=Path, default=None,
-                    help="carpeta de salida; por defecto ./export_<formato> "
-                         "si se paso --format, o ./wa-export en modo legacy")
+                    help="output folder; defaults to ./export_<format> with "
+                         "--format, or ./wa-export in legacy mode")
     ap.add_argument("--format", dest="fmt", choices=sorted(FORMAT_WRITERS),
                     default=None,
-                    help="formato unico de exportacion; sin esto se generan "
-                         "jsonl + csv + html como siempre")
+                    help="single export format; without it, jsonl + csv + html are generated")
     ap.add_argument("--contacts", type=Path, default=None,
-                    help="'.vcf' opcional para resolver numeros a nombres "
-                         "de contacto en chats individuales y remitentes de "
-                         "grupo; si falla o no aporta nada, se sigue sin "
-                         "resolver (nunca corta la exportacion)")
+                    help="optional .vcf for resolving phone numbers to contact names; "
+                         "failure never stops the export")
     a = ap.parse_args()
 
     if a.phase == "wizard":
@@ -1513,7 +1502,7 @@ def main() -> None:
             print(e.detail, file=sys.stderr)
         sys.exit(e.exit_code)
     except KeyboardInterrupt:
-        print("ERROR [E90] cancelado por el usuario", file=sys.stderr)
+        print("ERROR [E90] cancelled by the user", file=sys.stderr)
         sys.exit(130)
 
 

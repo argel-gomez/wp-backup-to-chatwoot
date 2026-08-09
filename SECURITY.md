@@ -1,24 +1,23 @@
-# Seguridad
+# Security
 
-## Datos que nunca deben publicarse
+## Data that must never be published
 
-No adjuntes a un issue, commit o pull request archivos de respaldo, contactos,
-conversaciones, adjuntos, bases de datos, `.env`, tokens de Chatwoot, URLs con
-credenciales ni llaves SSH.
+Do not attach backups, contacts, conversations, media, databases, `.env` files,
+Chatwoot tokens, credential-bearing URLs, or SSH keys to issues, commits, or pull
+requests.
 
-No abras PostgreSQL (`5432`) a Internet para usar este proyecto. La importación
-de chats debe conectarse mediante el túnel SSH local que crea la aplicación.
+Do not expose PostgreSQL port `5432` to the Internet. The chat importer must use
+the local SSH tunnel created by the application.
 
-Si una credencial fue publicada accidentalmente, eliminá el contenido público y
-rotá inmediatamente la credencial. Borrar solamente el último commit no la
-elimina del historial de Git.
+If a credential is accidentally published, remove the public content and rotate
+the credential immediately. Deleting only the latest commit does not remove it
+from Git history.
 
-## Informar una vulnerabilidad
+## Reporting a vulnerability
 
-Usá la opción **Report a vulnerability** de la pestaña Security del repositorio
-si está disponible. Si no lo está, abrí un issue sin incluir secretos, datos
-personales ni instrucciones de explotación, y solicitá un canal privado al
-mantenedor.
+Use **Report a vulnerability** on the repository's Security tab when available.
+Otherwise, open an issue without secrets, personal information, or exploitation
+details and ask the maintainer for a private channel.
 
-Incluí la versión o commit afectado, el impacto esperado y los pasos mínimos
-para reproducir el problema con datos ficticios.
+Include the affected version or commit, expected impact, and minimal reproduction
+steps using fictional data.

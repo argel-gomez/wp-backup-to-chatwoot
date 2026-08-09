@@ -2,14 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { deriveDatabaseSettings, parseKeyValueLines } from "../lib/postgres.mjs";
 
-test("parsea valores que contienen signos igual", () => {
+test("parses values containing equal signs", () => {
   assert.deepEqual(parseKeyValueLines("POSTGRES_PASSWORD=a=b=c\nPOSTGRES_DB=chatwoot\n"), {
     POSTGRES_PASSWORD: "a=b=c",
     POSTGRES_DB: "chatwoot",
   });
 });
 
-test("crea una URL local para el Docker Compose oficial", () => {
+test("creates a local URL for the official Docker Compose setup", () => {
   const result = deriveDatabaseSettings({
     POSTGRES_HOST: "postgres",
     POSTGRES_PORT: "5432",
@@ -29,7 +29,7 @@ test("crea una URL local para el Docker Compose oficial", () => {
   assert.equal(result.TUNNEL_REMOTE_PORT, "5432");
 });
 
-test("conserva parámetros y enruta una base administrada a través de SSH", () => {
+test("preserves parameters and routes a managed database through SSH", () => {
   const result = deriveDatabaseSettings({
     DATABASE_URL: "postgresql://chatwoot:secret@db.internal:5433/chatwoot_production?sslmode=require",
   }, { localPort: "25432" });
@@ -42,13 +42,13 @@ test("conserva parámetros y enruta una base administrada a través de SSH", () 
   assert.equal(result.TUNNEL_REMOTE_PORT, "5433");
 });
 
-test("rechaza un host Docker que no es alcanzable desde el servidor", () => {
+test("rejects a Docker host that cannot be reached from the server", () => {
   assert.throws(
     () => deriveDatabaseSettings({
       POSTGRES_HOST: "postgres",
       POSTGRES_USERNAME: "postgres",
       POSTGRES_PASSWORD: "secret",
     }),
-    /no se encontró cómo alcanzarlo/i
+    /could not be reached from SSH/i
   );
 });

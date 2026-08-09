@@ -190,17 +190,17 @@ function sanitizeBaseUrl(raw) {
 const CONFIG_FIELDS = [
   {
     key: "CHATWOOT_BASE_URL",
-    question: "URL base de Chatwoot (ej: https://chatwoot.example.com): ",
+    question: "Chatwoot base URL (for example, https://chatwoot.example.com): ",
     sanitize: sanitizeBaseUrl,
   },
   {
     key: "CHATWOOT_ACCOUNT_ID",
-    question: "Account ID de Chatwoot — solo el número (lo ves en /app/accounts/{id}/...): ",
+    question: "Chatwoot account ID — number only (shown in /app/accounts/{id}/...): ",
     sanitize: sanitizeAccountId,
   },
   {
     key: "CHATWOOT_TOKEN",
-    question: "Token de acceso de Chatwoot (Perfil > Token de acceso): ",
+    question: "Chatwoot access token (Profile > Access Token): ",
     secret: true,
   },
 ];
@@ -211,20 +211,20 @@ async function ensureConfig() {
 
   if (!process.stdin.isTTY) {
     console.error(
-      `Falta configuración: ${missing.map((f) => f.key).join(", ")}.\n` +
-      "No hay terminal interactiva para preguntar — completa .env (ver .env.example) o define las variables de entorno."
+      `Missing configuration: ${missing.map((f) => f.key).join(", ")}.\n` +
+      "No interactive terminal is available. Complete .env (see .env.example) or define the environment variables."
     );
     process.exit(1);
   }
 
-  console.log("Falta configuración de Chatwoot. Se guardará en .env para la próxima vez.\n");
+  console.log("Chatwoot configuration is incomplete. Your answers will be saved in .env.\n");
 
   const toSave = {};
   for (const field of missing) {
     const raw = field.secret ? await promptHidden(field.question) : await promptVisible(field.question);
     const trimmed = raw.trim();
     if (!trimmed) {
-      console.error(`${field.key} es obligatorio.`);
+      console.error(`${field.key} is required.`);
       process.exit(1);
     }
     const value = field.sanitize ? field.sanitize(trimmed) : trimmed;
@@ -233,18 +233,18 @@ async function ensureConfig() {
   }
 
   saveToEnvFile(toSave);
-  console.log("\nGuardado en .env.\n");
+  console.log("\nSaved in .env.\n");
 }
 
 async function reconfigure() {
-  console.log("\nConfiguración actual:");
-  console.log(`  CHATWOOT_BASE_URL   = ${process.env.CHATWOOT_BASE_URL || "(sin definir)"}`);
-  console.log(`  CHATWOOT_ACCOUNT_ID = ${process.env.CHATWOOT_ACCOUNT_ID || "(sin definir)"}`);
-  console.log(`  CHATWOOT_TOKEN      = ${process.env.CHATWOOT_TOKEN ? "********" : "(sin definir)"}\n`);
+  console.log("\nCurrent configuration:");
+  console.log(`  CHATWOOT_BASE_URL   = ${process.env.CHATWOOT_BASE_URL || "(not set)"}`);
+  console.log(`  CHATWOOT_ACCOUNT_ID = ${process.env.CHATWOOT_ACCOUNT_ID || "(not set)"}`);
+  console.log(`  CHATWOOT_TOKEN      = ${process.env.CHATWOOT_TOKEN ? "********" : "(not set)"}\n`);
 
   const toSave = {};
   for (const field of CONFIG_FIELDS) {
-    const label = `${field.question}(Enter = mantener el actual) `;
+    const label = `${field.question}(Enter = keep current value) `;
     const raw = field.secret ? await promptHidden(label) : await promptVisible(label);
     const trimmed = raw.trim();
     if (!trimmed) continue;
@@ -255,9 +255,9 @@ async function reconfigure() {
 
   if (Object.keys(toSave).length) {
     saveToEnvFile(toSave);
-    console.log("\nConfiguración actualizada en .env.\n");
+    console.log("\nConfiguration updated in .env.\n");
   } else {
-    console.log("\nSin cambios.\n");
+    console.log("\nNo changes.\n");
   }
 }
 
@@ -300,20 +300,20 @@ async function resolveCsvSource(promptText) {
 
     if (drop.excel.length) {
       console.log(
-        `\nOjo: hay Excel en ${donde} (${drop.excel.join(", ")}) — el importador no lee .xlsx.` +
-        "\nAbrilo en Excel y guardalo como CSV (Archivo > Guardar como > CSV) en la misma carpeta."
+        `\nExcel files were found in ${donde} (${drop.excel.join(", ")}); the importer cannot read .xlsx.` +
+        "\nOpen each file in Excel and save it as CSV (File > Save As > CSV) in the same folder."
       );
     }
     if (drop.usable.length) {
-      console.log(`\nArchivos encontrados en ${donde}:`);
+      console.log(`\nFiles found in ${donde}:`);
       drop.usable.forEach((p, i) => console.log(`  ${i + 1}) ${path.basename(p)}`));
     } else if (!esDrop) {
-      console.log(`\nEn ${donde} no hay ningún .csv ni .vcf.`);
+      console.log(`\nNo .csv or .vcf files were found in ${donde}.`);
     }
 
     const label = drop.usable.length
-      ? `${promptText} — número de la lista, otra ruta/URL, o Enter = 1: `
-      : `${promptText} (ruta de un archivo, de una CARPETA, o URL — o dejalo en PLACE-HERE-2-CONTACTS): `;
+      ? `${promptText} — list number, another path/URL, or Enter = 1: `
+      : `${promptText} (file path, FOLDER path, or URL — or place it in PLACE-HERE-2-CONTACTS): `;
 
     // Windows a veces pega la ruta entre comillas al usar "Copiar como ruta de acceso".
     const answer = (await promptVisible(label)).trim().replace(/^"(.*)"$/, "$1");
@@ -332,11 +332,11 @@ async function resolveCsvSource(promptText) {
       continue;
     }
 
-    console.log(`\nNo encontré: ${answer || "(vacío)"}`);
+    console.log(`\nNot found: ${answer || "(empty)"}`);
     console.log(
-      `Copiá tu .vcf o .csv a ${DROP_DIR}\n` +
-      "o pegá la ruta completa del archivo (ej: C:\\Backup\\Whatsapp\\contactos.vcf),\n" +
-      "o la de la carpeta donde estén (ej: C:\\Contactos) y elegí de la lista.\n"
+      `Copy your .vcf or .csv file to ${DROP_DIR}\n` +
+      "or enter the full file path (for example, C:\\Backup\\WhatsApp\\contacts.vcf),\n" +
+      "or enter its folder (for example, C:\\Contacts) and choose from the list.\n"
     );
   }
 }
@@ -354,7 +354,7 @@ function decodeCsvBuffer(buffer) {
 async function readCsvSource(source) {
   if (/^https?:\/\//i.test(source)) {
     const res = await fetch(source);
-    if (!res.ok) throw new Error(`No se pudo descargar el CSV (${res.status})`);
+    if (!res.ok) throw new Error(`Could not download the CSV (${res.status})`);
     return decodeCsvBuffer(Buffer.from(await res.arrayBuffer()));
   }
   return decodeCsvBuffer(fs.readFileSync(source));
@@ -480,7 +480,7 @@ function vcfBlockToRow(lines, defaultCountryCode, assumedAreaCode) {
   const name = stripEmoji(fn) || emailValues[0] || "";
 
   if (!telValues.length && !emailValues.length) {
-    return { row: null, skip: { nombre: name || "(sin nombre)", motivo: "vCard sin teléfono ni email" } };
+    return { row: null, skip: { nombre: name || "(unnamed)", motivo: "vCard has no phone number or email" } };
   }
 
   // Si hay varios TEL (típico: el mismo número duplicado con/sin el 9 del celular, o el
@@ -522,7 +522,7 @@ function vcfBlockToRow(lines, defaultCountryCode, assumedAreaCode) {
       bio: note,
     },
     skip: null,
-    reconstruido: reconstruido ? { nombre: name || "(sin nombre)", ...reconstruido } : null,
+    reconstruido: reconstruido ? { nombre: name || "(unnamed)", ...reconstruido } : null,
   };
 }
 
@@ -566,7 +566,7 @@ async function promptWithSavedDefault(envKey, question) {
   // no hay a quién preguntarle: se usa lo que haya guardado en .env en vez de quedarse
   // esperando una respuesta que nunca llega.
   if (!process.stdin.isTTY) {
-    if (saved) console.log(`${question}: ${saved} (de .env, sin consola para preguntar)`);
+    if (saved) console.log(`${question}: ${saved} (from .env; no interactive terminal)`);
     return saved;
   }
   const label = saved ? `${question} (Enter = "${saved}"): ` : `${question}: `;
@@ -587,15 +587,15 @@ async function promptCiudad() {
   const anterior = process.env.DEFAULT_CITY || "";
 
   if (!process.stdin.isTTY) {
-    if (anterior) console.log(`Ciudad: ${anterior} (de .env, sin consola para preguntar)`);
+    if (anterior) console.log(`City: ${anterior} (from .env; no interactive terminal)`);
     return anterior;
   }
 
-  console.log("\nCiudad de TODOS los contactos de este archivo.");
-  console.log("Se le pone a los nuevos y también se CORRIGE en los que ya existan en Chatwoot.");
-  if (anterior) console.log(`  (la última importación fue de: ${anterior})`);
+  console.log("\nCity for every contact in this file.");
+  console.log("It is assigned to new contacts and corrects existing Chatwoot contacts.");
+  if (anterior) console.log(`  (last imported city: ${anterior})`);
 
-  const input = (await promptVisible('Ciudad — escribila entera, o "-" para no tocar ninguna ciudad: ')).trim();
+  const input = (await promptVisible('City — enter the full name, or "-" to leave city unchanged: ')).trim();
   if (input === "-" || input === "") return "";
 
   if (input !== anterior) {
@@ -610,35 +610,35 @@ async function promptVcfDefaults(defaultCountryCode) {
   // de cada unidad se exporta por separado, así que estar en este archivo ES la prueba de
   // a qué ciudad pertenece el contacto — por eso la ciudad se pisa aunque el contacto ya
   // exista en Chatwoot con otra (ver aplicarCiudad en el import).
-  console.log("\nSolo se importa nombre, teléfono y ciudad.");
+  console.log("\nOnly name, phone number, and city are imported.");
   const isBrazil = defaultCountryCode.replace(/\D/g, "") === "55";
   let areaCode = "";
   if (isBrazil) {
-    console.log("Los números de Brasil sin +55 lo reciben automáticamente. Si falta el DDD, se usa este:");
+    console.log("Brazilian numbers without +55 receive it automatically. Enter the area code used when DDD is missing:");
     areaCode = await promptWithSavedDefault(
       "DEFAULT_AREA_CODE",
-      "Código de área (DDD) para teléfonos sin DDD (Enter = 44)"
+      "Area code (DDD) for phone numbers without one (Enter = 44)"
     ) || "44";
   } else {
-    console.log(`Los números nacionales sin prefijo usarán ${defaultCountryCode}.`);
+    console.log(`National numbers without a prefix will use ${defaultCountryCode}.`);
   }
 
   const city = await promptCiudad();
   const country = city
     ? await promptWithSavedDefault(
       "DEFAULT_COUNTRY",
-      isBrazil ? "País (Enter = BR)" : "País (código ISO, Enter = no definir)"
+      isBrazil ? "Country (Enter = BR)" : "Country (ISO code, Enter = leave unset)"
     ) || (isBrazil ? "BR" : "")
     : "";
 
-  if (city) console.log(`\nSe va a marcar: ${city}${country ? ` (${country})` : ""}`);
+  if (city) console.log(`\nContacts will be marked as: ${city}${country ? ` (${country})` : ""}`);
   console.log("");
   return { areaCode, city, country, company: "" };
 }
 
 async function loadRows(source) {
   const isVcf = /\.vcf($|\?)/i.test(source);
-  console.log(`\nCargando ${isVcf ? "VCF" : "CSV"} desde: ${source}`);
+  console.log(`\nLoading ${isVcf ? "VCF" : "CSV"} from: ${source}`);
 
   if (isVcf) {
     const DEFAULT_COUNTRY_CODE = process.env.DEFAULT_COUNTRY_CODE || "+55";
@@ -649,12 +649,12 @@ async function loadRows(source) {
     if (reconstruidos.length) {
       fs.writeFileSync("telefonos-reconstruidos.json", JSON.stringify(reconstruidos, null, 2));
       console.log(
-        `${reconstruidos.length} teléfono(s) reconstruidos agregándoles el DDD ${areaCode} ` +
-        "(y el 9 del celular si hacía falta) — revisalos en telefonos-reconstruidos.json."
+        `${reconstruidos.length} phone number(s) reconstructed with area code ${areaCode} ` +
+        "(and a mobile 9 when required). Review telefonos-reconstruidos.json."
       );
     }
     if (skipped.length) {
-      console.log(`${skipped.length} contacto(s) sin teléfono ni email — se van a saltear (ver excluidos.json al final).`);
+      console.log(`${skipped.length} contact(s) have no phone number or email and will be skipped. See excluidos.json.`);
     }
 
     const rowsConDefaults = rows.map((r) => ({
@@ -694,7 +694,7 @@ const DDD_VALIDOS = new Set([
 
 // Devuelve { value } si el teléfono es válido, o { invalidReason } si no se puede usar.
 function normalizePhone(raw, defaultCountryCode) {
-  if (!raw || !raw.trim()) return { invalidReason: "vacío" };
+  if (!raw || !raw.trim()) return { invalidReason: "empty value" };
   const trimmed = raw.trim();
 
   // Excel convierte números largos a notación científica al exportar a CSV (ej. 5.545E+12),
@@ -704,7 +704,7 @@ function normalizePhone(raw, defaultCountryCode) {
   }
 
   const digits = trimmed.replace(/\D/g, "");
-  if (!digits) return { invalidReason: `sin dígitos (${trimmed})` };
+  if (!digits) return { invalidReason: `contains no digits (${trimmed})` };
 
   const countryDigits = defaultCountryCode.replace(/\D/g, "");
 
@@ -714,7 +714,7 @@ function normalizePhone(raw, defaultCountryCode) {
     const internationalDigits = trimmed.startsWith("+") ? digits : digits.replace(/^00/, "");
     return /^[1-9]\d{7,14}$/.test(internationalDigits)
       ? { value: `+${internationalDigits}` }
-      : { invalidReason: `número internacional ilegible (${trimmed})` };
+      : { invalidReason: `invalid international number (${trimmed})` };
   }
 
   // Fuera de Brasil no inventamos reglas nacionales: quitamos el cero de troncal,
@@ -726,7 +726,7 @@ function normalizePhone(raw, defaultCountryCode) {
     const international = `${countryDigits}${withoutTrunk}`;
     return /^[1-9]\d{7,14}$/.test(international)
       ? { value: `+${international}` }
-      : { invalidReason: `no parece un teléfono E.164 válido (${trimmed})` };
+      : { invalidReason: `not a valid E.164 phone number (${trimmed})` };
   }
 
   // Un nacional válido es DDD real + número de línea:
@@ -755,7 +755,7 @@ function normalizePhone(raw, defaultCountryCode) {
   }
 
   if (!national) {
-    return { invalidReason: `no parece un teléfono válido, ${digits.length} dígitos (${trimmed})` };
+    return { invalidReason: `not a valid phone number: ${digits.length} digits (${trimmed})` };
   }
 
   return { value: `${defaultCountryCode}${national}` };
@@ -830,7 +830,7 @@ function escapeVcf(value) {
 
 async function generarVcfDeNombres(source) {
   if (/\.vcf($|\?)/i.test(source)) {
-    console.log("Ese archivo ya es un .vcf: pasáselo tal cual al módulo 1, no hay nada que convertir.");
+    console.log("This is already a .vcf file. Use it directly in module 1; no conversion is needed.");
     return;
   }
 
@@ -876,16 +876,16 @@ async function generarVcfDeNombres(source) {
   const destino = path.join(DROP_DIR, `${base}-nombres.vcf`);
   fs.writeFileSync(destino, lineas.join("\r\n") + "\r\n", "utf8");
 
-  console.log(`\n${porTelefono.size} contacto(s) escritos en:`);
+  console.log(`\n${porTelefono.size} contact(s) written to:`);
   console.log(`  ${destino}`);
-  if (sinNombre) console.log(`  (${sinNombre} fila(s) sin nombre, salteadas)`);
-  if (telefonoInvalido) console.log(`  (${telefonoInvalido} fila(s) con teléfono inválido, salteadas)`);
+  if (sinNombre) console.log(`  (${sinNombre} unnamed row(s) skipped)`);
+  if (telefonoInvalido) console.log(`  (${telefonoInvalido} row(s) with invalid phone numbers skipped)`);
   if (conflictos.length) {
-    appendReporte("nombres-en-conflicto.json", conflictos, "  Número(s) con más de un nombre");
+    appendReporte("nombres-en-conflicto.json", conflictos, "  Number(s) assigned to more than one name");
   }
-  console.log("\nPara usarlo al exportar los chats (módulo 1):");
+  console.log("\nTo use this file when exporting chats (module 1):");
   console.log(`  python modules/backup/wa_archive.py export --contacts "${destino}"`);
-  console.log("El wizard también lo encuentra solo, por estar en PLACE-HERE-2-CONTACTS.");
+  console.log("The wizard also detects it automatically in PLACE-HERE-2-CONTACTS.");
 }
 
 // ---------- Reportes de la corrida ----------
@@ -915,7 +915,7 @@ function appendReporte(archivo, items, etiqueta) {
   } catch {}
   const total = [...previos, ...items];
   fs.writeFileSync(archivo, JSON.stringify(total, null, 2));
-  console.log(`${etiqueta} en ${archivo} (${total.length})`);
+  console.log(`${etiqueta} in ${archivo} (${total.length})`);
 }
 
 // ---------- Import ----------
@@ -1026,8 +1026,8 @@ async function importRows(entries, preExcluidos = []) {
     const rawName = (row.name || [row.first_name, row.last_name].filter(Boolean).join(" ")).trim();
 
     if (PLACEHOLDER_NAMES.has(rawName.toUpperCase())) {
-      excluidos.push({ fila, nombre: rawName, motivo: "nombre placeholder" });
-      console.log(`- Fila ${fila} (${rawName}): excluido (placeholder)`);
+      excluidos.push({ fila, nombre: rawName, motivo: "placeholder name" });
+      console.log(`- Row ${fila} (${rawName}): excluded (placeholder)`);
       continue;
     }
 
@@ -1036,12 +1036,12 @@ async function importRows(entries, preExcluidos = []) {
     let phoneSkipReason = phoneCheck.invalidReason;
 
     if (phoneValue && telefonosUsadosEnEsteLote.has(phoneValue)) {
-      phoneSkipReason = "teléfono duplicado en el CSV (ya usado por otro contacto en esta corrida)";
+      phoneSkipReason = "duplicate phone number in the CSV (already used by another contact in this run)";
       phoneValue = undefined;
     }
 
     const payload = buildPayload(row, phoneValue);
-    const label = payload.name || row.email || row.phone_number || `fila ${fila}`;
+    const label = payload.name || row.email || row.phone_number || `row ${fila}`;
 
     // Códigos de servicio de la operadora que vienen en el chip ("Siga me CP ati" con
     // el 21100, atajos de 2-7 dígitos): no son personas, no se suben.
@@ -1052,8 +1052,8 @@ async function importRows(entries, preExcluidos = []) {
     // de más). Esos SÍ se crean —sin teléfono— y quedan en sin-telefono.json para
     // arreglarlos a mano, que era el comportamiento de siempre.
     if (phoneSkipReason && esCodigoDeServicio(row.phone_number, rawName) && !row.email) {
-      excluidos.push({ fila, nombre: label, telefono_original: row.phone_number || "", motivo: `código de servicio de la operadora, no es un contacto (${row.phone_number})` });
-      console.log(`- Fila ${fila} (${label}): excluido (código de servicio ${row.phone_number})`);
+      excluidos.push({ fila, nombre: label, telefono_original: row.phone_number || "", motivo: `carrier service code, not a contact (${row.phone_number})` });
+      console.log(`- Row ${fila} (${label}): excluded (service code ${row.phone_number})`);
       continue;
     }
 
@@ -1103,7 +1103,7 @@ async function importRows(entries, preExcluidos = []) {
         if (ciudadDespues && ciudadAntes !== ciudadDespues) {
           ciudadActualizada.push({
             fila, nombre: label, telefono: phoneValue || null, id: contacto.id,
-            ciudad_anterior: ciudadAntes || "(sin ciudad)", ciudad_nueva: ciudadDespues,
+            ciudad_anterior: ciudadAntes || "(no city)", ciudad_nueva: ciudadDespues,
           });
         }
         return { ...payload, additional_attributes: fusionados };
@@ -1135,12 +1135,12 @@ async function importRows(entries, preExcluidos = []) {
       if (!res.ok) {
         const detalle = await res.text();
         errores.push({ fila, contacto: label, status: res.status, detalle });
-        console.log(`✗ Fila ${fila} (${label}): ${res.status}`);
+        console.log(`✗ Row ${fila} (${label}): ${res.status}`);
       } else if (existingId) {
         actualizados++;
         if (phoneValue) telefonosUsadosEnEsteLote.add(phoneValue);
-        subidos.push({ fila, nombre: label, telefono: phoneValue || null, id: existingId, accion: "actualizado" });
-        console.log(`~ Fila ${fila} (${label}${phoneValue ? `, ${phoneValue}` : ""}): actualizado (id ${existingId})${phoneSkipReason ? " [sin teléfono]" : ""}`);
+        subidos.push({ fila, nombre: label, telefono: phoneValue || null, id: existingId, accion: "updated" });
+        console.log(`~ Row ${fila} (${label}${phoneValue ? `, ${phoneValue}` : ""}): updated (id ${existingId})${phoneSkipReason ? " [no phone number]" : ""}`);
       } else {
         creados++;
         // el id del contacto recién creado sale de la respuesta de la API — sirve para
@@ -1151,35 +1151,35 @@ async function importRows(entries, preExcluidos = []) {
           nuevoId = data?.payload?.contact?.id ?? data?.payload?.id ?? data?.id ?? null;
         } catch {}
         if (phoneValue) telefonosUsadosEnEsteLote.add(phoneValue);
-        subidos.push({ fila, nombre: label, telefono: phoneValue || null, id: nuevoId, accion: "creado" });
-        console.log(`✓ Fila ${fila} (${label}${phoneValue ? `, ${phoneValue}` : ""})${phoneSkipReason ? " [sin teléfono]" : ""}`);
+        subidos.push({ fila, nombre: label, telefono: phoneValue || null, id: nuevoId, accion: "created" });
+        console.log(`✓ Row ${fila} (${label}${phoneValue ? `, ${phoneValue}` : ""})${phoneSkipReason ? " [no phone number]" : ""}`);
       }
     } catch (e) {
       errores.push({ fila, contacto: label, detalle: String(e) });
-      console.log(`✗ Fila ${fila} (${label}): ${e}`);
+      console.log(`✗ Row ${fila} (${label}): ${e}`);
     }
 
     await sleep(200); // evita saturar la instancia
   }
 
   console.log(
-    `\nListo. Creados: ${creados} | Actualizados: ${actualizados} | ` +
-    `Sin teléfono válido: ${sinTelefono.length} | Excluidos: ${excluidos.length} | ` +
-    `Errores: ${errores.length} / ${entries.length} filas de este lote.`
+    `\nDone. Created: ${creados} | Updated: ${actualizados} | ` +
+    `No valid phone number: ${sinTelefono.length} | Excluded: ${excluidos.length} | ` +
+    `Errors: ${errores.length} / ${entries.length} rows in this batch.`
   );
   if (ciudadActualizada.length) {
-    console.log(`Ciudad corregida en ${ciudadActualizada.length} contacto(s) que ya existían.`);
+    console.log(`City corrected for ${ciudadActualizada.length} existing contact(s).`);
   }
 
   // Los reportes se ACUMULAN: la opción 1 llama a importRows dos veces (muestra y resto),
   // y sobrescribir sin más borraba del reporte lo de la primera pasada — incluidos los
   // vCards sin teléfono ni email, que solo llegan en la muestra. resetReportes() los
   // limpia al empezar cada corrida, así nunca se mezclan dos corridas distintas.
-  appendReporte("errores.json", errores, "Detalle de errores");
-  appendReporte("sin-telefono.json", sinTelefono, "Contactos creados sin teléfono válido (revisar a mano)");
-  appendReporte("excluidos.json", excluidos, "Contactos no subidos (placeholders y códigos de servicio)");
-  appendReporte("ciudad-actualizada.json", ciudadActualizada, "Contactos existentes a los que se les corrigió la ciudad");
-  appendReporte("atributos-no-leidos.json", atributosNoLeidos, "Contactos cuyos atributos no se pudieron leer (se dejaron intactos, sin cambiar la ciudad)");
+  appendReporte("errores.json", errores, "Error details");
+  appendReporte("sin-telefono.json", sinTelefono, "Contacts created without a valid phone number (review manually)");
+  appendReporte("excluidos.json", excluidos, "Contacts not uploaded (placeholders and service codes)");
+  appendReporte("ciudad-actualizada.json", ciudadActualizada, "Existing contacts whose city was corrected");
+  appendReporte("atributos-no-leidos.json", atributosNoLeidos, "Contacts whose attributes could not be read (left unchanged)");
 
   return { creados, actualizados, sinTelefono: sinTelefono.length, excluidos: excluidos.length, errores: errores.length, subidos };
 }
@@ -1190,7 +1190,7 @@ const conFilaOriginal = (rows) => rows.map((row, i) => ({ row, fila: i + 2 }));
 async function runFullImport(source) {
   resetReportes();
   const { rows, skipped } = await loadRows(source);
-  console.log(`${rows.length} fila(s) encontradas.\n`);
+  console.log(`${rows.length} row(s) found.\n`);
   await importRows(conFilaOriginal(rows), skipped);
 }
 
@@ -1228,11 +1228,11 @@ function linkContacto(id) {
 
 function mostrarSubidos(subidos) {
   if (!subidos?.length) return;
-  console.log("\nRevisá que hayan quedado bien — abrí cada enlace en el navegador:");
+  console.log("\nReview the test contacts by opening each link in your browser:");
   for (const s of subidos) {
-    const detalle = s.telefono ? s.telefono : "sin teléfono";
-    console.log(`  ${s.accion === "actualizado" ? "~" : "✓"} ${s.nombre} — ${detalle} (${s.accion})`);
-    console.log(`    ${s.id ? linkContacto(s.id) : "(sin id en la respuesta — buscalo por nombre en Contactos)"}`);
+    const detalle = s.telefono ? s.telefono : "no phone number";
+    console.log(`  ${s.accion === "updated" ? "~" : "✓"} ${s.nombre} — ${detalle} (${s.accion})`);
+    console.log(`    ${s.id ? linkContacto(s.id) : "(the response had no id; search by name in Contacts)"}`);
   }
 }
 
@@ -1245,23 +1245,23 @@ async function runSampleThenMaybeFull(source, sampleSize = 2) {
   const resto = entries.filter((e) => !enMuestra.has(e));
 
   console.log(
-    `${rows.length} fila(s) en total. Probando con ${sample.length} al azar ` +
-    `(fila ${sample.map((e) => e.fila).join(" y fila ")})...\n`
+    `${rows.length} total row(s). Testing ${sample.length} random contact(s) ` +
+    `(row ${sample.map((e) => e.fila).join(" and row ")})...\n`
   );
   const resultado = await importRows(sample, skipped);
   mostrarSubidos(resultado.subidos);
 
   if (resto.length) {
     const confirm = await promptVisible(
-      `\n¿Los ${sample.length} contacto(s) de prueba quedaron bien en Chatwoot? ` +
-      `¿Continuar con el resto (${resto.length} contactos)? (s/N): `
+      `\nDo the ${sample.length} test contact(s) look correct in Chatwoot? ` +
+      `Continue with the remaining ${resto.length} contacts? (y/N): `
     );
-    if (/^s/i.test(confirm.trim())) {
+    if (/^(y|yes|s|si|sí)$/i.test(confirm.trim())) {
       // sin preExcluidos: los vCards vacíos ya los reportó la pasada de la muestra y
       // los reportes se acumulan (appendReporte), así que no se pierden ni se duplican
       await importRows(resto);
     } else {
-      console.log("Import del resto cancelado. Podés volver a correrlo cuando quieras.");
+      console.log("The remaining import was cancelled. You may run it again later.");
     }
   }
 }
@@ -1270,12 +1270,12 @@ async function runSampleThenMaybeFull(source, sampleSize = 2) {
 
 function showLastRunSummary() {
   const reports = [
-    { file: "errores.json", label: "Errores" },
-    { file: "sin-telefono.json", label: "Contactos sin teléfono válido" },
-    { file: "excluidos.json", label: "Contactos no subidos (placeholders, servicios, vCards vacías)" },
-    { file: "telefonos-reconstruidos.json", label: "Teléfonos con DDD reconstruido (revisar)" },
-    { file: "ciudad-actualizada.json", label: "Contactos existentes con la ciudad corregida" },
-    { file: "atributos-no-leidos.json", label: "Contactos que quedaron sin actualizar la ciudad" },
+    { file: "errores.json", label: "Errors" },
+    { file: "sin-telefono.json", label: "Contacts without a valid phone number" },
+    { file: "excluidos.json", label: "Contacts not uploaded (placeholders, services, empty vCards)" },
+    { file: "telefonos-reconstruidos.json", label: "Phone numbers reconstructed with DDD (review)" },
+    { file: "ciudad-actualizada.json", label: "Existing contacts whose city was corrected" },
+    { file: "atributos-no-leidos.json", label: "Contacts whose city was left unchanged" },
   ];
 
   console.log("");
@@ -1286,30 +1286,30 @@ function showLastRunSummary() {
     const data = JSON.parse(fs.readFileSync(file, "utf8"));
     console.log(`${label}: ${data.length} (${file})`);
     for (const item of data.slice(0, 5)) {
-      const ubicacion = item.fila ? `fila ${item.fila}` : "vCard";
+      const ubicacion = item.fila ? `row ${item.fila}` : "vCard";
       const detalle = item.motivo || item.detalle || item.status ||
         (item.ciudad_nueva ? `${item.ciudad_anterior} -> ${item.ciudad_nueva}` : "") ||
         (item.original ? `${item.original} -> ${item.reconstruido}` : "");
       console.log(`  - ${ubicacion}: ${item.contacto || item.nombre} — ${detalle}`);
     }
-    if (data.length > 5) console.log(`  ... y ${data.length - 5} más`);
+    if (data.length > 5) console.log(`  ... and ${data.length - 5} more`);
   }
-  if (!any) console.log("Todavía no hay reportes de ninguna corrida.");
+  if (!any) console.log("No run reports are available yet.");
   console.log("");
 }
 
 // ---------- Menú ----------
 
 async function showMenu() {
-  console.log("=== Importador de Contactos — Chatwoot ===");
-  console.log(`Conectado a: ${process.env.CHATWOOT_BASE_URL} (cuenta ${process.env.CHATWOOT_ACCOUNT_ID})\n`);
-  console.log("1) Probar con 1-2 contactos elegidos al azar");
-  console.log("2) Importar un archivo completo (CSV o VCF, sin prueba previa)");
-  console.log("3) Ver resumen de la última corrida");
-  console.log("4) Generar .vcf de nombres desde un CSV (para el export del módulo 1)");
-  console.log("5) Cambiar configuración (URL / cuenta / token)");
-  console.log("6) Salir\n");
-  const choice = await promptVisible("Elegí una opción (1-6): ");
+  console.log("=== Chatwoot Contact Importer ===");
+  console.log(`Connected to: ${process.env.CHATWOOT_BASE_URL} (account ${process.env.CHATWOOT_ACCOUNT_ID})\n`);
+  console.log("1) Test 1-2 randomly selected contacts");
+  console.log("2) Import a complete CSV or VCF file without a test");
+  console.log("3) Show the latest run summary");
+  console.log("4) Generate a name .vcf from CSV for module 1");
+  console.log("5) Change configuration (URL / account / token)");
+  console.log("6) Exit\n");
+  const choice = await promptVisible("Choose an option (1-6): ");
   return choice.trim();
 }
 
@@ -1320,23 +1320,23 @@ async function menuLoop() {
 
     try {
       if (choice === "1") {
-        const source = await resolveCsvSource("Archivo de contactos (CSV o VCF)");
+        const source = await resolveCsvSource("Contact file (CSV or VCF)");
         await runSampleThenMaybeFull(source);
       } else if (choice === "2") {
-        const source = await resolveCsvSource("Archivo de contactos (CSV o VCF)");
+        const source = await resolveCsvSource("Contact file (CSV or VCF)");
         await runFullImport(source);
       } else if (choice === "3") {
         showLastRunSummary();
       } else if (choice === "4") {
-        const source = await resolveCsvSource("CSV con los nombres (name, phone_number)");
+        const source = await resolveCsvSource("CSV containing names (name, phone_number)");
         await generarVcfDeNombres(source);
       } else if (choice === "5") {
         await reconfigure();
       } else if (choice === "6" || choice === "") {
-        console.log("Listo, chau.");
+        console.log("Done.");
         break;
       } else {
-        console.log("Opción inválida, elegí un número del 1 al 6.\n");
+        console.log("Invalid option. Choose a number from 1 to 6.\n");
       }
     } catch (e) {
       console.error(`\nError: ${e.message}\n`);
@@ -1351,7 +1351,7 @@ async function main() {
   // no toca Chatwoot, así que no tiene por qué pedir URL ni token.
   if (process.argv[2] === "--vcf") {
     if (!process.argv[3]) {
-      console.error("Uso: node import-contacts.mjs --vcf <archivo.csv>");
+      console.error("Usage: node import-contacts.mjs --vcf <file.csv>");
       process.exit(1);
     }
     await generarVcfDeNombres(process.argv[3]);
@@ -1366,7 +1366,7 @@ async function main() {
   }
 
   if (!process.stdin.isTTY) {
-    console.error("Uso: node import-contacts.mjs <ruta-o-URL-del-csv>");
+    console.error("Usage: node import-contacts.mjs <csv-path-or-url>");
     process.exit(1);
   }
 

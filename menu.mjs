@@ -66,14 +66,14 @@ function ensureDropDirs() {
 // (errores*.json, sin-telefono.json, contactos-ambiguos.json, estado.json...).
 function runNode(script, args = []) {
   const res = spawnSync(process.execPath, [script, ...args], { stdio: "inherit", cwd: ROOT_DIR });
-  if (res.error) warn(`No se pudo ejecutar ${path.basename(script)}: ${res.error.message}`);
-  else if (res.status !== 0) warn(`${path.basename(script)} terminó con código ${res.status}.`);
+  if (res.error) warn(`Could not run ${path.basename(script)}: ${res.error.message}`);
+  else if (res.status !== 0) warn(`${path.basename(script)} exited with code ${res.status}.`);
 }
 
 function runBackupWizard() {
   console.log("");
-  info("Abriendo el asistente de respaldo (instala Python solo si hace falta) ...");
-  info("Si Windows pide permisos para instalar Python, aceptalos.");
+  info("Opening the backup wizard (Python is installed only if required) ...");
+  info("If Windows requests permission to install Python, approve it.");
   console.log("");
   const res = spawnSync(
     "powershell.exe",
@@ -90,8 +90,8 @@ function runBackupWizard() {
       },
     }
   );
-  if (res.error) warn(`No se pudo lanzar PowerShell: ${res.error.message}`);
-  else if (res.status !== 0) warn(`El asistente de respaldo terminó con código ${res.status}.`);
+  if (res.error) warn(`Could not start PowerShell: ${res.error.message}`);
+  else if (res.status !== 0) warn(`The backup wizard exited with code ${res.status}.`);
 }
 
 function maskSecrets(line) {
@@ -103,26 +103,26 @@ function maskSecrets(line) {
 function showConfig() {
   console.log("");
   if (!fs.existsSync(ENV_PATH)) {
-    info("Todavía no hay nada guardado (.env no existe). Cada módulo pregunta lo suyo al usarlo.");
+    info("Nothing has been saved yet (.env does not exist). Each module asks for what it needs.");
     return;
   }
-  console.log(bold(`Configuración guardada (${ENV_PATH}):`));
+  console.log(bold(`Saved configuration (${ENV_PATH}):`));
   console.log("");
   for (const line of fs.readFileSync(ENV_PATH, "utf8").split(/\r?\n/)) {
     if (!line.trim() || line.startsWith("#")) continue;
     console.log(`  ${maskSecrets(line)}`);
   }
   console.log("");
-  info("Para cambiar un valor: borralo o editalo en .env (bloc de notas) — o borrá la");
-  info("línea y el programa lo vuelve a preguntar la próxima vez que lo necesite.");
+  info("To change a value, edit or delete it in .env. If you delete the line,");
+  info("the program asks for it again the next time it is needed.");
 }
 
 function showHeader() {
   console.log("");
-  banner("WhatsApp Backup to Chatwoot", "respaldo de WhatsApp Business + importación a Chatwoot");
+  banner("WhatsApp Backup to Chatwoot", "WhatsApp Business backup and Chatwoot migration");
   const resumen = [];
-  resumen.push(process.env.SSH_HOST ? `servidor: ${process.env.SSH_USER || "?"}@${process.env.SSH_HOST}` : "servidor: sin configurar");
-  resumen.push(process.env.CHATWOOT_BASE_URL ? `chatwoot: ${process.env.CHATWOOT_BASE_URL}` : "chatwoot: sin configurar");
+  resumen.push(process.env.SSH_HOST ? `server: ${process.env.SSH_USER || "?"}@${process.env.SSH_HOST}` : "server: not configured");
+  resumen.push(process.env.CHATWOOT_BASE_URL ? `chatwoot: ${process.env.CHATWOOT_BASE_URL}` : "chatwoot: not configured");
   console.log(c("dim", `  ${resumen.join("   |   ")}`));
 }
 
@@ -147,23 +147,23 @@ async function menu() {
 
     showHeader();
     console.log("");
-    console.log(c("dim", "  Tus archivos van en las carpetas PLACE-HERE-1/2/3 (cada una tiene un README.txt)."));
+    console.log(c("dim", "  Place your files in the PLACE-HERE-1/2/3 folders (each contains README.txt)."));
     console.log("");
-    console.log(bold("   Flujo completo (en este orden):"));
-    console.log("1) RESPALDAR y exportar WhatsApp Business (celular ya copiado a la PC)");
-    console.log("2) Importar CONTACTOS a Chatwoot (CSV o VCF, por API)");
-    console.log("3) Abrir TÚNEL SSH al servidor (necesario para el paso 4)");
-    console.log("4) Importar CHATS de WhatsApp a Chatwoot (menú propio: prueba, pasos 1-3, deshacer)");
+    console.log(bold("   Complete workflow (in this order):"));
+    console.log("1) BACK UP and export WhatsApp Business (phone folder already copied to the PC)");
+    console.log("2) Import CONTACTS into Chatwoot (CSV or VCF through the API)");
+    console.log("3) Open the SSH TUNNEL to the server (required for step 4)");
+    console.log("4) Import WhatsApp CHATS into Chatwoot (test, steps 1-3, and undo)");
     console.log("");
-    console.log(bold("   Herramientas:"));
-    console.log("5) Configurar SSH (usuario, IP, llave .pem)");
-    console.log("6) Probar la conexión SSH");
-    console.log("7) Ver la configuración guardada");
-    console.log("8) Repetir la configuración inicial (onboarding)");
+    console.log(bold("   Tools:"));
+    console.log("5) Configure SSH (user, host, .pem key)");
+    console.log("6) Test the SSH connection");
+    console.log("7) View saved configuration");
+    console.log("8) Repeat initial setup (onboarding)");
     console.log("");
-    console.log("0) Salir");
+    console.log("0) Exit");
 
-    const choice = await ask("\nElegí una opción: ");
+    const choice = await ask("\nChoose an option: ");
     try {
       if (choice === "1") {
         runBackupWizard();
@@ -184,10 +184,10 @@ async function menu() {
         await runOnboarding({ force: true });
         refreshEnv();
       } else if (choice === "0" || choice === "") {
-        console.log("\nListo, chau.");
+        console.log("\nDone. Goodbye.");
         break;
       } else {
-        warn("Opción inválida.");
+        warn("Invalid option.");
       }
     } catch (e) {
       printError(e);
@@ -199,9 +199,9 @@ try {
   ensureDropDirs();
   if (!process.stdin.isTTY) {
     console.error(
-      "Este menú es interactivo y necesita una consola real (doble clic en run.bat).\n" +
-      "Para automatizar, corré los módulos directo:\n" +
-      "  node modules/contactos/import-contacts.mjs <archivo.csv|vcf>\n" +
+      "This menu is interactive and requires a real console (double-click run.bat).\n" +
+      "For automation, run the modules directly:\n" +
+      "  node modules/contactos/import-contacts.mjs <file.csv|vcf>\n" +
       "  node modules/chats/import-chats.mjs --dry-run | --all | --undo | ...\n" +
       "  node modules/chats/recon.mjs"
     );

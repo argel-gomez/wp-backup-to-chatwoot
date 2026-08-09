@@ -102,7 +102,7 @@ function msgstorePath() {
   if (process.env.MSGSTORE_DB) return process.env.MSGSTORE_DB;
 
   // el wizard deja dentro del export un puntero a la base descifrada, porque el
-  // export (PONER-AQUI-3) puede quedar lejos de la carpeta del respaldo
+  // export (PLACE-HERE-3) puede quedar lejos de la carpeta del respaldo
   try {
     const apuntada = fs.readFileSync(path.join(EXPORT_DIR, "_msgstore_location.txt"), "utf8").trim();
     if (apuntada && fs.existsSync(apuntada)) return apuntada;
@@ -112,9 +112,9 @@ function msgstorePath() {
   const juntoAlExport = path.join(EXPORT_DIR, "..", "_wa_decrypted.db");
   if (fs.existsSync(juntoAlExport)) return juntoAlExport;
 
-  // con las carpetas PONER-AQUI, el respaldo (y su _wa_decrypted.db) vive en
-  // PONER-AQUI-1-respaldo-celular — directo o un nivel adentro
-  const dropBackup = path.join(ROOT_DIR, "PONER-AQUI-1-respaldo-celular");
+  // con las carpetas PLACE-HERE, el respaldo (y su _wa_decrypted.db) vive en
+  // PLACE-HERE-1-ANDROID-BACKUP — directo o un nivel adentro
+  const dropBackup = path.join(ROOT_DIR, "PLACE-HERE-1-ANDROID-BACKUP");
   const candidatos = [dropBackup];
   try {
     for (const e of fs.readdirSync(dropBackup, { withFileTypes: true })) {

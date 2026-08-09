@@ -1,78 +1,62 @@
 # WhatsApp Business Backup to Chatwoot
 
-Herramienta de código abierto para respaldar WhatsApp Business para Android,
-exportar el historial e importar contactos, conversaciones y adjuntos a
-Chatwoot.
+[Español](README.es.md) · **English**
 
-Todo se ejecuta desde la computadora del usuario. Los respaldos, contactos,
-mensajes, tokens, contraseñas y llaves SSH quedan fuera de Git.
+Open-source Windows tool for backing up **WhatsApp Business for Android**, exporting
+its history, and importing contacts, conversations, and attachments into Chatwoot.
+
+Everything runs on the user's computer. Backups, contacts, messages, API tokens,
+database passwords, and SSH keys are excluded from Git.
 
 > [!IMPORTANT]
-> Este proyecto no es oficial ni está afiliado con WhatsApp o Chatwoot. La
-> importación de chats escribe directamente en PostgreSQL y debe probarse primero
-> en una copia. Hacé un `pg_dump` antes de modificar una instancia real.
+> This project supports the **Android WhatsApp Business app only**. It does not
+> support iPhone/iOS, the regular WhatsApp consumer app, or WhatsApp Cloud API
+> backups.
 
-## Qué modalidad elegir
+> [!CAUTION]
+> This is an experimental community project. It is not an official WhatsApp or
+> Chatwoot product. Historical chat import writes directly to Chatwoot's
+> PostgreSQL database and may break when Chatwoot changes its schema. Test on a
+> disposable/staging instance and create a verified `pg_dump` before touching
+> production. A paid Chatwoot plan does not make this tool officially supported.
 
-| Necesidad | Chatwoot Cloud | Chatwoot autohospedado |
+## What can it do?
+
+| Task | Chatwoot Cloud | Self-hosted Chatwoot |
 |---|---:|---:|
-| Respaldar y exportar WhatsApp | Sí, no requiere Chatwoot | Sí |
-| Importar contactos por API | Sí | Sí |
-| Importar chats con fecha histórica | No | Sí, requiere SSH y PostgreSQL |
-| Importar adjuntos históricos | No | Sí, requiere SSH y acceso al storage |
+| Back up and export WhatsApp Business | Yes; Chatwoot is not required | Yes |
+| Import contacts through the Chatwoot API | Yes | Yes |
+| Import chats with their historical timestamps | No | Yes; SSH and PostgreSQL required |
+| Import historical attachments | No | Yes; SSH and storage access required |
 
-Chatwoot permite usar su API tanto en Cloud como en instalaciones propias, pero
-el acceso administrativo a PostgreSQL solamente existe en una instalación
-autohospedada. Si un proveedor administra el servidor y no entrega SSH/base de
-datos, usá únicamente respaldo/exportación y contactos por API.
+Chatwoot's API is available for Cloud and self-hosted installations. Administrative
+PostgreSQL access is only possible on a self-hosted installation. If a hosting
+provider does not give you SSH and database access, use only backup/export and
+contact import.
 
-## Modelo de seguridad de PostgreSQL
+## Requirements
 
-**No abras el puerto 5432 en Internet.** El programa usa este recorrido:
+- Windows 10 or Windows 11.
+- [Node.js](https://nodejs.org/) 22.13 or newer; Node.js 24 LTS is recommended.
+- An **Android** phone with WhatsApp Business installed.
+- A complete copy of the Android `WhatsApp Business` folder and, if the database
+  is encrypted, its 64-digit key.
+- For contacts: a Chatwoot URL and a user access token with access to the account.
+- For chats: self-hosted Chatwoot, administrative SSH access, PostgreSQL access,
+  and access to the attachment storage.
+- Windows OpenSSH Client for server detection and the database tunnel.
+- Python 3.12 for backup processing. The wizard can install it through `winget`.
 
-```text
-Programa en Windows → 127.0.0.1:15432 → túnel SSH → PostgreSQL del servidor:5432
-```
+## Install
 
-Durante el onboarding, una instalación Docker puede detectarse automáticamente:
+### Download a ZIP
 
-1. El usuario proporciona host, usuario y llave SSH.
-2. El programa comprueba la conexión sin contraseña (`BatchMode`).
-3. Con autorización explícita, ejecuta por SSH una inspección de solo lectura.
-4. Lee únicamente `DATABASE_URL` o las variables `POSTGRES_*` del contenedor
-   Rails y la ubicación interna del contenedor PostgreSQL.
-5. Construye una URL que apunta a `127.0.0.1:15432` y la guarda en el `.env`
-   local. La contraseña nunca se muestra en pantalla.
-6. Al abrir el túnel, PostgreSQL sigue accesible únicamente a través de SSH.
+1. On GitHub, select **Code → Download ZIP**.
+2. Extract the entire ZIP to a local folder. Do not run `run.bat` from inside
+   the compressed file.
+3. Double-click `run.bat`.
 
-La configuración oficial de Chatwoot admite `DATABASE_URL` o variables
-`POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DATABASE`, `POSTGRES_USERNAME` y
-`POSTGRES_PASSWORD`. Su Compose de producción publica PostgreSQL en el localhost
-del servidor, no directamente en Internet. Consultá la
-[referencia de variables](https://developers.chatwoot.com/self-hosted/configuration/environment-variables)
-y la [guía oficial de Docker](https://developers.chatwoot.com/self-hosted/deployment/docker).
-
-## Requisitos
-
-- Windows 10 u 11.
-- [Node.js](https://nodejs.org/) 22.13 o posterior; Node.js 24 LTS recomendado.
-- Para respaldo: una copia de la carpeta de WhatsApp Business de Android y, si
-  la base está cifrada, su clave de 64 dígitos.
-- Para contactos: URL de Chatwoot y un token de usuario con acceso a la cuenta.
-- Para chats: Chatwoot autohospedado, SSH administrativo, PostgreSQL y acceso al
-  almacenamiento de adjuntos.
-- El asistente intenta instalar Python 3.12 mediante `winget` cuando hace falta.
-- Cliente OpenSSH de Windows para túnel/detección del servidor.
-
-## Instalación
-
-### Descargar un ZIP
-
-1. En GitHub, elegí **Code → Download ZIP**.
-2. Extraé todo el ZIP en una carpeta local; no ejecutes `run.bat` dentro del ZIP.
-3. Hacé doble clic en `run.bat`.
-
-### Clonar con Git
+### Clone with Git
 
 ```powershell
 git clone https://github.com/argel-gomez/wp-backup-to-chatwoot.git
@@ -80,254 +64,358 @@ cd wp-backup-to-chatwoot
 .\run.bat
 ```
 
-La primera ejecución instala las dependencias de Node.js y crea `.env` desde
+The first run installs Node.js dependencies and creates a local `.env` from
 `.env.example`.
 
-## Onboarding de primera ejecución
+### Automatic dependency setup
 
-Al iniciar se pregunta qué alcance necesitás:
+- **Node.js itself:** must be installed first. `run.bat` checks the version and
+  prints the official `winget` command if it is missing or too old.
+- **Node packages:** installed automatically with `npm ci` on the first run,
+  using the exact versions in `package-lock.json`.
+- **Python:** needed only for backup/export. Option 1 installs Python 3.12 through
+  `winget` when Python is missing.
+- **Python packages:** installed by the backup wizard when required.
+- **OpenSSH Client:** required only for self-hosted chat import and must be enabled
+  in Windows Optional Features if it is not already present.
+- **ADB:** not required for normal USB file transfer and is never installed
+  automatically. Install Google's Platform Tools only for the optional ADB method.
 
-### 1. Solo respaldo/exportación
+Package installation requires an Internet connection. Windows may request approval
+for Python installation.
 
-No solicita variables de Chatwoot. Permite verificar, descifrar y exportar el
-respaldo local en HTML, texto, JSON, CSV, Markdown o formato Chatwoot.
+## Copy the Android backup to the computer
 
-### 2. Respaldo y contactos por API
-
-Solicita:
-
-- URL base: `https://app.chatwoot.com` o el dominio de la instalación propia.
-- Token de acceso: Chatwoot → **Configuración del perfil → Token de acceso**.
-- Código telefónico predeterminado: por ejemplo `+55`, `+34` o `+52`.
-
-El token se escribe oculto. El programa llama a `/api/v1/profile`, valida el
-token y obtiene las cuentas disponibles. Si hay varias, permite elegir una sin
-tener que buscar manualmente el `ACCOUNT_ID`.
-
-### 3. Flujo completo autohospedado
-
-Además de la API opcional, solicita:
-
-- `SSH_HOST`: dominio o IPv4 del servidor.
-- `SSH_USER`: usuario SSH, normalmente `ubuntu`.
-- `SSH_KEY`: archivo `.pem` o una carpeta donde buscarlo.
-
-Después prueba SSH y ofrece detectar PostgreSQL desde Docker. Para autorizar la
-detección, el usuario SSH debe ejecutar `docker info`; también funciona con
-`sudo -n docker` cuando el servidor permite Docker sin contraseña interactiva.
-
-Si la detección falla porque la instalación no usa Docker, podés pegar
-`DATABASE_URL` manualmente. El valor se escribe oculto y debe usar el puerto
-local del túnel:
+The program creates the destination folder automatically:
 
 ```text
-postgresql://USUARIO:CONTRASEÑA@127.0.0.1:15432/NOMBRE_BASE
+PLACE-HERE-1-ANDROID-BACKUP\
 ```
 
-El administrador encuentra los valores originales en el `.env` de Chatwoot.
-En el servidor, desde la carpeta de instalación, puede revisar solamente las
-variables relevantes:
+The folder contains a bilingual `README.txt` reminder, and the main menu also
+displays where files must be placed.
+
+### Recommended method: USB file transfer (MTP)
+
+1. Connect the unlocked Android phone with a USB cable that supports data.
+2. Tap the Android USB notification and choose **File transfer / Android Auto**.
+   Do not leave it in **Charge only** mode.
+3. In Windows File Explorer, open **This PC → your phone → Internal shared storage**.
+4. Browse to:
+
+   ```text
+   Android\media\com.whatsapp.w4b\WhatsApp Business
+   ```
+
+5. Copy the **complete `WhatsApp Business` folder**, including `Databases`,
+   `Media`, and `Backups`.
+6. Paste it into the repository like this:
+
+   ```text
+   PLACE-HERE-1-ANDROID-BACKUP\WhatsApp Business\Databases
+   PLACE-HERE-1-ANDROID-BACKUP\WhatsApp Business\Media
+   PLACE-HERE-1-ANDROID-BACKUP\WhatsApp Business\Backups
+   ```
+
+7. Wait for Windows to finish copying before disconnecting the phone. Large
+   media folders may take a long time.
+
+USB debugging is **not required** for normal MTP file transfer and should not be
+enabled without a reason.
+
+### Optional advanced method: ADB
+
+Use this only when MTP cannot copy the folder and you understand Android developer
+access. The program cannot enable USB debugging automatically; Android requires
+the phone owner to enable and approve it on the device.
+
+1. Install Google's official [SDK Platform Tools](https://developer.android.com/tools/releases/platform-tools).
+2. On Android, enable **Developer options → USB debugging**.
+3. Connect the phone, unlock it, and approve the computer's RSA fingerprint.
+4. From the repository root, verify the device and copy the folder:
+
+   ```powershell
+   adb devices
+   adb pull "/sdcard/Android/media/com.whatsapp.w4b/WhatsApp Business" "PLACE-HERE-1-ANDROID-BACKUP\WhatsApp Business"
+   ```
+
+5. Disable USB debugging and revoke debugging authorizations after the copy if
+   you no longer need ADB.
+
+## First-run onboarding
+
+The wizard asks which scope you need.
+
+### 1. Backup/export only
+
+No Chatwoot settings are requested. You can verify, decrypt, and export the local
+backup as HTML, text, JSON, CSV, Markdown, or Chatwoot import data.
+
+### 2. Backup and contacts through the API
+
+The wizard requests:
+
+- Chatwoot base URL: `https://app.chatwoot.com` or your self-hosted domain.
+- User access token: Chatwoot → **Profile settings → Access Token**.
+- Default calling code for national numbers, such as `+55`, `+34`, or `+52`.
+
+The token input is hidden. The tool calls `/api/v1/profile`, validates the token,
+and lists the available accounts. If the token has access to multiple accounts,
+you can select one without manually finding its ID.
+
+### 3. Full self-hosted workflow
+
+In addition to optional API settings, the wizard requests:
+
+- `SSH_HOST`: server domain or IPv4 address.
+- `SSH_USER`: SSH user, often `ubuntu`.
+- `SSH_KEY`: a `.pem` file or a directory in which to find it.
+
+It tests SSH and offers to discover PostgreSQL from Docker. The SSH user must be
+able to run `docker info`; passwordless `sudo -n docker` is also supported.
+
+If the installation does not use Docker, enter `DATABASE_URL` manually. Input is
+hidden and must point to the local end of the tunnel:
+
+```text
+postgresql://USERNAME:PASSWORD@127.0.0.1:15432/DATABASE_NAME
+```
+
+An administrator can find the original values in Chatwoot's server-side `.env`.
+From the installation directory, inspect only the relevant variables:
 
 ```bash
 grep -E '^(DATABASE_URL|POSTGRES_HOST|POSTGRES_PORT|POSTGRES_DATABASE|POSTGRES_DB|POSTGRES_USERNAME|POSTGRES_USER|POSTGRES_PASSWORD)=' .env
 ```
 
-No publiques ni pegues esa salida en issues o chats. Si PostgreSQL es un servicio
-administrado, `TUNNEL_REMOTE_HOST` debe ser el host de la base visto desde el
-servidor SSH.
+Never paste that output into an issue, community chat, or support ticket. For a
+managed database, `TUNNEL_REMOTE_HOST` must be the database hostname as seen from
+the SSH server.
 
-### 4. Configurar después
+### 4. Configure later
 
-Abre el menú sin pedir integraciones. La opción 8 vuelve a ejecutar el
-onboarding cuando tengas los datos.
+This opens the menu without requesting integrations. Menu option 8 runs onboarding
+again when the required information is available.
 
-## Variables guardadas
+## PostgreSQL security model
 
-| Variable | Uso | Secreto |
-|---|---|---:|
-| `SETUP_MODE` | Modalidad elegida en el onboarding | No |
-| `CHATWOOT_BASE_URL` | URL de Chatwoot | No |
-| `CHATWOOT_ACCOUNT_ID` | Cuenta elegida | No |
-| `CHATWOOT_TOKEN` | Autenticación de API | Sí |
-| `DEFAULT_COUNTRY_CODE` | Prefijo para números nacionales | No |
-| `SSH_HOST`, `SSH_USER` | Acceso al servidor | No |
-| `SSH_KEY` | Ruta local de la llave privada | Sensible |
-| `DATABASE_URL` | Usuario y contraseña PostgreSQL | Sí |
-| `TUNNEL_LOCAL_PORT` | Puerto local; predeterminado `15432` | No |
-| `TUNNEL_REMOTE_HOST` | Base vista desde el servidor SSH | No |
-| `TUNNEL_REMOTE_PORT` | Puerto remoto; predeterminado `5432` | No |
-| `ACCOUNT_ID`, `INBOX_ID`, `AGENT_USER_ID` | Destino de chats | No |
-| `EXPORT_DIR`, `STORAGE_ROOT` | Export y staging de adjuntos | No |
-
-El archivo `.env` está ignorado por Git. Para cambiar valores podés repetir el
-onboarding, usar las opciones de configuración de cada módulo o editar `.env`
-localmente. Nunca reemplaces `.env.example` con tus valores reales.
-
-## Manual del flujo completo
-
-### Paso 0: preparar los archivos
-
-El programa crea tres carpetas, cada una con un `LEEME.txt`:
-
-| Carpeta | Qué colocar |
-|---|---|
-| `PONER-AQUI-1-respaldo-celular\` | Carpeta de WhatsApp Business que contiene `Databases`, `Media` y `Backups` |
-| `PONER-AQUI-2-contactos\` | Archivo `.vcf` o `.csv` de contactos |
-| `PONER-AQUI-3-export-chats\` | `chatwoot_export.json` y carpeta `attachments` |
-
-En Android, la carpeta de WhatsApp Business suele encontrarse en:
+**Never expose port 5432 to the Internet.** The connection path is:
 
 ```text
-Almacenamiento interno/Android/media/com.whatsapp.w4b/WhatsApp Business
+Windows tool → 127.0.0.1:15432 → SSH tunnel → server-side PostgreSQL:5432
 ```
 
-### Paso 1: respaldar y exportar WhatsApp
+During Docker discovery, the tool:
 
-1. Copiá la carpeta completa en `PONER-AQUI-1-respaldo-celular`.
-2. Ejecutá `run.bat` y elegí la opción 1.
-3. El asistente verifica `Databases`, `Media` y `Backups`.
-4. Si se solicita, introducí la clave de 64 dígitos. No se guarda en disco.
-5. Elegí el formato **Chatwoot** si luego importarás los chats.
-6. Confirmá que se generaron `chatwoot_export.json`, `_summary.json` y
-   `attachments` dentro de `PONER-AQUI-3-export-chats`.
+1. Receives the SSH host, user, and key from the local user.
+2. verifies non-interactive SSH connectivity.
+3. Requests explicit approval before a read-only server inspection.
+4. Reads only `DATABASE_URL` or `POSTGRES_*` variables from the Rails container
+   and the PostgreSQL container's internal location.
+5. Builds a local URL using `127.0.0.1:15432` and stores it in the local `.env`.
+   The password is never printed.
+6. Keeps PostgreSQL reachable only through SSH while the tunnel window is open.
 
-### Paso 2: importar contactos
+See Chatwoot's official [environment variable reference](https://developers.chatwoot.com/self-hosted/configuration/environment-variables),
+[Docker deployment guide](https://developers.chatwoot.com/self-hosted/deployment/docker),
+and [backup guide](https://developers.chatwoot.com/self-hosted/deployment/backup).
 
-1. Exportá contactos como VCF o CSV.
-2. Para CSV se recomiendan columnas `name`, `phone_number`, `email`, `city` y
-   `country`; también admite `first_name` y `last_name`.
-3. Colocá el archivo en `PONER-AQUI-2-contactos`.
-4. Elegí la opción 2 del menú principal.
-5. Primero usá la prueba con 1–2 contactos.
-6. Revisá esos contactos en Chatwoot y recién después continuá con el resto.
+## Local configuration
 
-Un mismo archivo puede contener números de cualquier país. Los números con `+`
-o prefijo internacional `00` se conservan como E.164; las pruebas usan números
-de rangos reservados para ficción como `+12025550123`, `00442079460123` y
-`+61255501234`. Los números nacionales sin prefijo reciben
-`DEFAULT_COUNTRY_CODE`. Para `+55` también se aplican controles específicos de
-DDD y celulares brasileños; para otros países no se inventan reglas nacionales.
+| Variable | Purpose | Secret? |
+|---|---|---:|
+| `SETUP_MODE` | Onboarding mode | No |
+| `CHATWOOT_BASE_URL` | Chatwoot URL | No |
+| `CHATWOOT_ACCOUNT_ID` | Selected account | No |
+| `CHATWOOT_TOKEN` | API authentication | Yes |
+| `DEFAULT_COUNTRY_CODE` | Prefix for national phone numbers | No |
+| `SSH_HOST`, `SSH_USER` | Server access | No |
+| `SSH_KEY` | Local private-key path | Sensitive |
+| `DATABASE_URL` | PostgreSQL username and password | Yes |
+| `TUNNEL_LOCAL_PORT` | Local port; default `15432` | No |
+| `TUNNEL_REMOTE_HOST` | Database host as seen by the SSH server | No |
+| `TUNNEL_REMOTE_PORT` | Remote port; default `5432` | No |
+| `ACCOUNT_ID`, `INBOX_ID`, `AGENT_USER_ID` | Chat destination | No |
+| `EXPORT_DIR`, `STORAGE_ROOT` | Export and attachment staging | No |
 
-### Paso 3: abrir el túnel SSH
+`.env` is ignored by Git. Re-run onboarding, use a module's configuration menu,
+or edit your local `.env` to change values. Never put real values in `.env.example`.
 
-1. Elegí la opción 3.
-2. El programa prueba la llave y el servidor.
-3. Se abre otra ventana con el túnel.
-4. Dejá esa ventana abierta durante toda la importación.
-5. No agregues ninguna regla pública para el puerto 5432.
+## Complete workflow
 
-Si `15432` está ocupado, cambiá `TUNNEL_LOCAL_PORT` en `.env`, por ejemplo a
-`25432`, y actualizá/repite el onboarding para reconstruir `DATABASE_URL`.
+### Step 0: place the files
 
-### Paso 4: respaldar PostgreSQL
+The program creates three input folders:
 
-Antes de importar, entrá por SSH al servidor y creá un dump. En Docker Compose,
-adaptando usuario y base a tu `.env`:
-
-```bash
-docker compose exec -T postgres pg_dump -U postgres chatwoot > chatwoot-antes-whatsapp.sql
-```
-
-Verificá que el archivo exista y tenga tamaño razonable:
-
-```bash
-ls -lh chatwoot-antes-whatsapp.sql
-```
-
-Guardalo fuera del contenedor y, preferentemente, copiá una segunda versión a
-otro almacenamiento.
-
-### Paso 5: reconocer y probar la importación
-
-1. Elegí la opción 4 del menú principal.
-2. Ejecutá **Dry-run**: analiza el export sin tocar PostgreSQL.
-3. Ejecutá **Reconocimiento de la base**: lista cuentas, bandejas, agentes y
-   storage sin insertar mensajes.
-4. Verificá los nombres de contacto.
-5. Importá solamente 1–2 chats de prueba.
-6. Revisá fechas, remitentes, bandeja, nombres y adjuntos en Chatwoot.
-
-### Paso 6: importar el historial
-
-En el menú de chats, seguí el orden indicado:
-
-1. Mensajes de los últimos 12 meses.
-2. Asociar adjuntos a los mensajes importados.
-3. Subir los archivos al storage del servidor.
-4. Historial anterior a 12 meses, si hace falta.
-
-El estado se guarda en `estado.json`; si el proceso se interrumpe, una nueva
-ejecución continúa con lo pendiente. La opción **Deshacer** elimina solamente
-los registros identificados como creados por esta herramienta, pero no sustituye
-el `pg_dump`.
-
-## Comandos disponibles
-
-| Comando | Acción |
+| Folder | Place this inside |
 |---|---|
-| `npm start` | Abre el menú principal |
-| `npm run onboarding` | Repite la configuración inicial |
-| `npm run contactos -- archivo.csv` | Importa contactos |
-| `npm run dry-run` | Analiza el export sin escribir en PostgreSQL |
-| `npm run recon` | Ejecuta reconocimiento de solo lectura |
-| `node modules/chats/import-chats.mjs --all` | Importa todos los chats pendientes |
-| `node modules/chats/import-chats.mjs --undo` | Inicia el flujo de deshacer |
-| `npm test` | Ejecuta las pruebas automatizadas locales |
+| `PLACE-HERE-1-ANDROID-BACKUP\` | Complete Android `WhatsApp Business` folder |
+| `PLACE-HERE-2-CONTACTS\` | Contact `.vcf` or `.csv` file |
+| `PLACE-HERE-3-CHATWOOT-EXPORT\` | `chatwoot_export.json` and `attachments` |
 
-## Problemas frecuentes
+Each folder contains a bilingual `README.txt` with the same instructions.
 
-### Uso Chatwoot Cloud
+### Step 1: back up and export WhatsApp
 
-No existe acceso a PostgreSQL ni SSH. Usá las opciones 1 y 2; la importación
-histórica de chats y adjuntos queda deshabilitada por diseño.
+1. Copy the complete Android folder as described above.
+2. Run `run.bat` and select option 1.
+3. The wizard verifies `Databases`, `Media`, and `Backups`.
+4. If requested, enter the 64-digit key. It is not written to disk.
+5. Choose **Chatwoot** format if you plan to import chats.
+6. Confirm that `chatwoot_export.json`, `_summary.json`, and `attachments` were
+   created under `PLACE-HERE-3-CHATWOOT-EXPORT`.
 
-### `No se pudo detectar PostgreSQL automáticamente`
+### Step 2: import contacts
 
-- Confirmá que Chatwoot use Docker Compose.
-- Probá `docker info` con el mismo usuario SSH.
-- Si solo funciona con `sudo`, el servidor necesita permitir `sudo -n docker` o
-  el administrador debe proporcionar `DATABASE_URL` manualmente.
-- En instalaciones Linux nativas, obtené la configuración desde el `.env` de
-  Chatwoot y completá el túnel manualmente.
+1. Export contacts as VCF or CSV.
+2. Recommended CSV columns are `name`, `phone_number`, `email`, `city`, and
+   `country`; `first_name` and `last_name` are also accepted.
+3. Put the file in `PLACE-HERE-2-CONTACTS`.
+4. Select option 2 from the main menu.
+5. Start with one or two test contacts.
+6. Check them in Chatwoot before importing the remaining contacts.
 
-### `Connection refused` a `127.0.0.1:15432`
+A single file may contain phone numbers from any country. Values beginning with
+`+` or international prefix `00` are preserved as E.164. National numbers receive
+`DEFAULT_COUNTRY_CODE`. Brazil-specific validation is applied only to `+55`;
+national rules are not invented for other countries.
 
-- La ventana del túnel no está abierta.
-- El puerto local cambió y `DATABASE_URL` todavía usa el anterior.
-- `TUNNEL_REMOTE_HOST` o `TUNNEL_REMOTE_PORT` no coinciden con la instalación.
+### Step 3: open the SSH tunnel
 
-### HTTP 401 al importar contactos
+1. Select option 3.
+2. The program tests the key and server.
+3. A separate tunnel window opens.
+4. Keep that window open throughout the import.
+5. Do not create a public firewall rule for port 5432.
 
-Generá un token de usuario desde el perfil de Chatwoot y confirmá que ese usuario
-tenga acceso a la cuenta elegida. Los tokens de Platform API no son equivalentes
-a los tokens de usuario usados por estos endpoints.
+If `15432` is busy, change `TUNNEL_LOCAL_PORT` in `.env`, for example to `25432`,
+and repeat onboarding so `DATABASE_URL` is rebuilt.
 
-### Cambios de esquema
+### Step 4: back up PostgreSQL
 
-WhatsApp y Chatwoot pueden modificar sus esquemas internos. No continúes si el
-reconocimiento o el chat de prueba falla. Abrí un issue sin adjuntar datos reales,
-tokens, dumps ni exports.
+Before importing, connect to the server through SSH and create a dump. For Docker
+Compose, adapt the database user and name to your installation:
 
-## Privacidad
+```bash
+docker compose exec -T postgres pg_dump -U postgres chatwoot > chatwoot-before-whatsapp.sql
+ls -lh chatwoot-before-whatsapp.sql
+```
 
-- No uses `git add -f` con las carpetas `PONER-AQUI-*`.
-- No publiques `.env`, `.pem`, VCF, CSV, dumps, `msgstore`, exports ni reportes.
-- Procesá únicamente datos para los que tengas autorización.
-- Rotá inmediatamente cualquier token o contraseña expuesta accidentalmente.
+Store the dump outside the container and preferably keep a second encrypted copy
+in separate storage. Chatwoot's official backup documentation also recommends
+backing up storage and configuration.
 
-Consultá [SECURITY.md](SECURITY.md) para informar problemas sin divulgar datos.
+### Step 5: inspect and test
 
-## Desarrollo y verificación
+1. Select option 4 from the main menu.
+2. Run **Dry run**; it analyzes the export without changing PostgreSQL.
+3. Run **Database reconnaissance**; it lists accounts, inboxes, agents, and
+   storage without inserting messages.
+4. Verify the contact names.
+5. Import only one or two test chats.
+6. Check dates, senders, inbox, names, and attachments in Chatwoot.
+
+### Step 6: import the history
+
+Follow the chat menu order:
+
+1. Import messages from the last 12 months.
+2. Associate attachments with imported messages.
+3. Upload files to server storage.
+4. Import history older than 12 months if required.
+
+Progress is stored in `estado.json`. If interrupted, the next run continues with
+pending work. **Undo** removes only records tagged as created by this tool; it is
+not a replacement for the PostgreSQL dump.
+
+## Commands
+
+| Command | Action |
+|---|---|
+| `npm start` | Open the main menu |
+| `npm run onboarding` | Repeat first-run configuration |
+| `npm run contactos -- file.csv` | Import contacts |
+| `npm run dry-run` | Analyze the export without writing to PostgreSQL |
+| `npm run recon` | Run read-only database reconnaissance |
+| `node modules/chats/import-chats.mjs --all` | Import all pending chats |
+| `node modules/chats/import-chats.mjs --undo` | Start the undo flow |
+| `npm test` | Run the automated tests |
+
+## Troubleshooting
+
+### Chatwoot Cloud
+
+Cloud customers do not have PostgreSQL or SSH access. Use options 1 and 2.
+Historical chat and attachment import is disabled by design.
+
+### Windows cannot see the phone or folder
+
+- Unlock the phone and select **File transfer / Android Auto**, not **Charge only**.
+- Try another USB data cable or USB port.
+- Accept any file-access prompt on the phone.
+- Confirm that you are using WhatsApp **Business** for Android; its package is
+  `com.whatsapp.w4b`.
+- Use the optional ADB method only after normal file transfer fails.
+
+### PostgreSQL could not be detected automatically
+
+- Confirm that Chatwoot uses Docker Compose.
+- Run `docker info` with the same SSH user.
+- If it works only with `sudo`, allow `sudo -n docker` or enter `DATABASE_URL`
+  manually.
+- For native Linux installations, read the Chatwoot `.env` and configure the
+  tunnel manually.
+
+### `Connection refused` at `127.0.0.1:15432`
+
+- The tunnel window is not open.
+- The local port changed but `DATABASE_URL` still uses the previous port.
+- `TUNNEL_REMOTE_HOST` or `TUNNEL_REMOTE_PORT` does not match the installation.
+
+### HTTP 401 while importing contacts
+
+Create a user access token from the Chatwoot profile and verify that the user can
+access the selected account. Platform API tokens are not equivalent to the user
+tokens required by these endpoints.
+
+### Schema changes
+
+WhatsApp and Chatwoot may change their internal schemas. Stop if reconnaissance
+or the test chat fails. Open an issue without attaching real contacts, tokens,
+dumps, exports, messages, or server details.
+
+## Privacy and security
+
+- Never use `git add -f` on any `PLACE-HERE-*` folder.
+- Never publish `.env`, `.pem`, VCF, CSV, dumps, `msgstore`, exports, or reports.
+- Process only data that you are authorized to handle.
+- Rotate any accidentally exposed token or password immediately.
+- Review [SECURITY.md](SECURITY.md) before reporting a problem.
+
+## Community sharing
+
+This repository may be useful to the Chatwoot self-hosted community as an
+**experimental migration utility**, especially for teams moving locally owned
+WhatsApp Business Android history. Present it as an independent project, not as
+an official or supported Chatwoot importer, and lead with the staging, backup,
+and schema-compatibility warnings above.
+
+Good places to share it are Chatwoot's official [community page and Discord](https://www.chatwoot.com/community)
+or [GitHub Discussions](https://github.com/orgs/chatwoot/discussions). If a test
+reveals a security issue in Chatwoot, follow Chatwoot's private security reporting
+process instead of posting details publicly.
+
+## Development
 
 ```powershell
 npm ci
 npm test
 ```
 
-Las pruebas cubren la construcción del túnel para Docker/servicios administrados,
-contraseñas con caracteres especiales y teléfonos internacionales configurables.
+The tests cover Docker and managed-database tunnel construction, passwords with
+special characters, and configurable international phone numbers.
 
-## Licencia
+## License
 
-[MIT](LICENSE). Podés usar, modificar y redistribuir el proyecto conservando el
-aviso de licencia.
+[MIT](LICENSE). You may use, modify, and redistribute the project while preserving
+the license notice.

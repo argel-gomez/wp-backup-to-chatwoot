@@ -34,13 +34,13 @@ if errorlevel 1 (
   exit /b 1
 )
 
-rem --- dependencias (csv-parse y pg), solo la primera vez ---
+rem --- dependencias fijadas en package-lock.json, solo la primera vez ---
 if not exist node_modules (
-  echo Instalando dependencias con npm ^(solo la primera vez^)...
-  call npm install
+  echo Instalando dependencias con npm ci ^(solo la primera vez^)...
+  call npm ci
   if errorlevel 1 (
     echo.
-    echo [ERROR] Fallo npm install. Revisa tu conexion a internet y volve a intentar.
+    echo [ERROR] Fallo npm ci. Revisa tu conexion a internet y volve a intentar.
     echo.
     pause
     exit /b 1

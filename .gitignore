@@ -47,13 +47,13 @@ Backups/
 attachments/
 
 # carpetas de entrada: lo que el usuario deja ahí son datos reales (solo se
-# versiona el LEEME.txt de cada una)
-PONER-AQUI-1-respaldo-celular/*
-PONER-AQUI-2-contactos/*
-PONER-AQUI-3-export-chats/*
-!PONER-AQUI-1-respaldo-celular/LEEME.txt
-!PONER-AQUI-2-contactos/LEEME.txt
-!PONER-AQUI-3-export-chats/LEEME.txt
+# versiona el README.txt de cada una)
+PLACE-HERE-1-ANDROID-BACKUP/*
+PLACE-HERE-2-CONTACTS/*
+PLACE-HERE-3-CHATWOOT-EXPORT/*
+!PLACE-HERE-1-ANDROID-BACKUP/README.txt
+!PLACE-HERE-2-CONTACTS/README.txt
+!PLACE-HERE-3-CHATWOOT-EXPORT/README.txt
 
 # las tres carpetas originales previas a la unificación: referencia histórica,
 # con datos de clientes adentro. No se versionan ni se ejecutan.

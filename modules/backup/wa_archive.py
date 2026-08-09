@@ -1200,14 +1200,14 @@ def clean_path_input(text: str) -> Path:
     return Path(text.strip().strip('"').strip("'")).expanduser()
 
 
-# Carpetas "PONER-AQUI" del programa unificado (Backup WP and Chatwoot): el
+# Carpetas "PLACE-HERE" del programa unificado (Backup WP and Chatwoot): el
 # lanzador (menu.mjs) las pasa por variables de entorno. Si el usuario ya dejo
 # ahi sus archivos, el asistente las ofrece como respuesta por defecto (Enter
 # para aceptar) -- siempre se puede escribir otra ruta encima.
 
 def drop_backup_default() -> str:
     # El usuario puede soltar la carpeta con cualquier anidado (visto en la vida
-    # real: PONER-AQUI-1\WhatsAppBusiness\com.whatsapp.w4b\WhatsApp Business), asi
+    # real: PLACE-HERE-1\WhatsAppBusiness\com.whatsapp.w4b\WhatsApp Business), asi
     # que se busca en anchura hasta 4 niveles. Se poda lo que no puede contener la
     # raiz (Media/Databases/Backups y carpetas ocultas — Media puede tener MILES de
     # subcarpetas) y se acota el total de carpetas visitadas: nunca se cuelga.
@@ -1246,7 +1246,7 @@ def drop_contacts_default() -> str:
 
 
 def default_export_dir(root: Path, fmt: str) -> Path:
-    # El formato "chatwoot" va por defecto a la carpeta PONER-AQUI-3-export-chats:
+    # El formato "chatwoot" va por defecto a la carpeta PLACE-HERE-3-CHATWOOT-EXPORT:
     # es lo que despues lee el importador de chats a Chatwoot.
     drop = os.environ.get("WA_DROP_EXPORT")
     if fmt == "chatwoot" and drop:
@@ -1308,7 +1308,7 @@ def prompt_contacts_path() -> Path | None:
         return True
 
     default = drop_contacts_default()
-    message = ("Contactos .vcf para resolver nombres (encontrado en PONER-AQUI-2 -- "
+    message = ("Contactos .vcf para resolver nombres (encontrado en PLACE-HERE-2 -- "
                "Enter para usarlo, borra la linea para omitir):" if default else
                "Contactos .vcf para resolver nombres (opcional, Enter para omitir):")
     answer = questionary.path(
@@ -1426,7 +1426,7 @@ def wizard() -> None:
             if fmt == "chatwoot":
                 # El importador de chats usa la base descifrada para el mapeo @lid y
                 # los nombres de tarjetas compartidas. Como el export puede quedar
-                # lejos del respaldo (carpeta PONER-AQUI-3), se deja apuntada la
+                # lejos del respaldo (carpeta PLACE-HERE-3), se deja apuntada la
                 # ubicacion real de la base para que el importador la encuentre.
                 (out_dir / "_msgstore_location.txt").write_text(str(db_path),
                                                                 encoding="utf-8")

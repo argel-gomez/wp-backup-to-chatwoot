@@ -11,7 +11,7 @@ const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 test("convierte un número nacional no brasileño usando DEFAULT_COUNTRY_CODE", () => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "wa-chatwoot-test-"));
   const csv = path.join(temp, "contactos-prueba.csv");
-  const output = path.join(root, "PONER-AQUI-2-contactos", "contactos-prueba-nombres.vcf");
+  const output = path.join(root, "PLACE-HERE-2-CONTACTS", "contactos-prueba-nombres.vcf");
   fs.writeFileSync(csv, "name,phone_number\nCONTACTO_EJEMPLO,123456789\n", "utf8");
 
   try {
@@ -35,7 +35,7 @@ test("convierte un número nacional no brasileño usando DEFAULT_COUNTRY_CODE", 
 test("acepta números E.164 de varios países en el mismo archivo", () => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "wa-chatwoot-world-test-"));
   const csv = path.join(temp, "contactos-mundiales.csv");
-  const output = path.join(root, "PONER-AQUI-2-contactos", "contactos-mundiales-nombres.vcf");
+  const output = path.join(root, "PLACE-HERE-2-CONTACTS", "contactos-mundiales-nombres.vcf");
   fs.writeFileSync(
     csv,
     [

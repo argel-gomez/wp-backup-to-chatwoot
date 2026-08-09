@@ -24,38 +24,40 @@ const MOD = (rel) => path.join(ROOT_DIR, "modules", ...rel.split("/"));
 // alguna, se recrea sola con su LEEME adentro).
 const LEEMES = {
   backup: [
-    "PONÉ ACÁ el respaldo de WhatsApp Business copiado del celular:",
-    "la carpeta 'WhatsApp Business' entera (o su contenido), que contiene",
-    "las subcarpetas Databases, Media y Backups.",
+    "PLACE HERE / PONÉ ACÁ the complete WhatsApp Business folder copied from Android.",
     "",
-    "En el celular está en:",
-    "  Almacenamiento interno > Android > media > com.whatsapp.w4b > WhatsApp Business",
+    "On the phone / En el teléfono:",
+    "  Internal storage / Almacenamiento interno",
+    "  > Android > media > com.whatsapp.w4b > WhatsApp Business",
     "",
-    "Después: run.bat -> opción 1.",
+    "Expected folders / Carpetas esperadas: Databases, Media, Backups.",
+    "USB: select File transfer / Android Auto. USB debugging is not required.",
+    "USB: elegí Transferencia de archivos / Android Auto. No hace falta Depuración USB.",
+    "",
+    "Then / Después: run.bat -> option/opción 1.",
   ],
   contactos: [
-    "PONÉ ACÁ el archivo de contactos a importar en Chatwoot:",
-    "  - contacts.vcf (export del celular o Google Contacts), o",
-    "  - un .csv (si lo tenés en Excel: Archivo > Guardar como > CSV)",
+    "PLACE HERE / PONÉ ACÁ the contacts file to import into Chatwoot:",
+    "  - contacts.vcf (phone or Google Contacts export), or",
+    "  - a .csv file (Excel: File > Save As > CSV).",
     "",
-    "Después: run.bat -> opción 2. El programa lo encuentra solo.",
+    "Then / Después: run.bat -> option/opción 2. The program finds it automatically.",
   ],
   exportChats: [
-    "ACÁ va el export de chats para subir a Chatwoot (la carpeta que contiene",
-    "chatwoot_export.json y attachments/).",
+    "PLACE HERE / PONÉ ACÁ the Chatwoot export folder containing",
+    "chatwoot_export.json and attachments/.",
     "",
-    "Si corrés la opción 1 (respaldo) con formato 'Chatwoot', el asistente ya",
-    "lo deja acá solo. Si lo generaste en otra máquina, copiá la carpeta",
-    "export_chatwoot entera acá adentro.",
+    "Option/opción 1 creates it here automatically when Chatwoot format is selected.",
+    "If generated on another computer, copy the complete export_chatwoot folder.",
     "",
-    "Después: run.bat -> opción 3 (túnel) y opción 4 (importar chats).",
+    "Then / Después: option/opción 3 (SSH tunnel) and 4 (chat import).",
   ],
 };
 
 function ensureDropDirs() {
   for (const [nombre, dir] of Object.entries(DROP_DIRS)) {
     fs.mkdirSync(dir, { recursive: true });
-    const leeme = path.join(dir, "LEEME.txt");
+    const leeme = path.join(dir, "README.txt");
     if (!fs.existsSync(leeme)) fs.writeFileSync(leeme, LEEMES[nombre].join("\r\n") + "\r\n");
   }
 }
@@ -145,7 +147,7 @@ async function menu() {
 
     showHeader();
     console.log("");
-    console.log(c("dim", "  Tus archivos van en las carpetas PONER-AQUI-1/2/3 (cada una tiene un LEEME)."));
+    console.log(c("dim", "  Tus archivos van en las carpetas PLACE-HERE-1/2/3 (cada una tiene un README.txt)."));
     console.log("");
     console.log(bold("   Flujo completo (en este orden):"));
     console.log("1) RESPALDAR y exportar WhatsApp Business (celular ya copiado a la PC)");

@@ -53,7 +53,7 @@ import { parse } from "csv-parse/sync"; // npm i csv-parse
 const ENV_PATH = new URL("../../.env", import.meta.url);
 
 // Carpeta de entrada: el usuario deja ahí su .vcf o .csv y se ofrece solo
-const DROP_DIR = fileURLToPath(new URL("../../PONER-AQUI-2-contactos", import.meta.url));
+const DROP_DIR = fileURLToPath(new URL("../../PLACE-HERE-2-CONTACTS", import.meta.url));
 
 try {
   process.loadEnvFile(ENV_PATH);
@@ -263,7 +263,7 @@ async function reconfigure() {
 
 // ---------- Lectura de CSV ----------
 
-// Lista los archivos importables que el usuario dejó en PONER-AQUI-2-contactos.
+// Lista los archivos importables que el usuario dejó en PLACE-HERE-2-CONTACTS.
 // También detecta Excel sin convertir para avisar (el importador lee CSV, no .xlsx).
 function listFilesIn(dir) {
   try {
@@ -290,12 +290,12 @@ async function resolveCsvSource(promptText) {
   // Además de un archivo, se puede pegar una CARPETA: las agendas suelen vivir
   // juntas y separadas por unidad (sucursal-a.csv, sucursal-b.csv,
   // sucursal-c.csv en la misma carpeta), y obligar a copiarlas
-  // de a una a PONER-AQUI-2 es un paso al pedo — se listan ahí mismo y se elige.
+  // de a una a PLACE-HERE-2 es un paso al pedo — se listan ahí mismo y se elige.
   let carpeta = DROP_DIR;
 
   while (true) {
     const esDrop = carpeta === DROP_DIR;
-    const donde = esDrop ? "PONER-AQUI-2-contactos" : carpeta;
+    const donde = esDrop ? "PLACE-HERE-2-CONTACTS" : carpeta;
     const drop = listFilesIn(carpeta);
 
     if (drop.excel.length) {
@@ -313,7 +313,7 @@ async function resolveCsvSource(promptText) {
 
     const label = drop.usable.length
       ? `${promptText} — número de la lista, otra ruta/URL, o Enter = 1: `
-      : `${promptText} (ruta de un archivo, de una CARPETA, o URL — o dejalo en PONER-AQUI-2-contactos): `;
+      : `${promptText} (ruta de un archivo, de una CARPETA, o URL — o dejalo en PLACE-HERE-2-CONTACTS): `;
 
     // Windows a veces pega la ruta entre comillas al usar "Copiar como ruta de acceso".
     const answer = (await promptVisible(label)).trim().replace(/^"(.*)"$/, "$1");
@@ -324,7 +324,7 @@ async function resolveCsvSource(promptText) {
 
     if (answer && fs.existsSync(answer)) {
       // Si es carpeta, no se puede importar: se pasa a listar SU contenido y se
-      // vuelve a preguntar (así se elige por número, igual que en PONER-AQUI-2).
+      // vuelve a preguntar (así se elige por número, igual que en PLACE-HERE-2).
       let esCarpeta = false;
       try { esCarpeta = fs.statSync(answer).isDirectory(); } catch {}
       if (!esCarpeta) return answer;
@@ -885,7 +885,7 @@ async function generarVcfDeNombres(source) {
   }
   console.log("\nPara usarlo al exportar los chats (módulo 1):");
   console.log(`  python modules/backup/wa_archive.py export --contacts "${destino}"`);
-  console.log("El wizard también lo encuentra solo, por estar en PONER-AQUI-2-contactos.");
+  console.log("El wizard también lo encuentra solo, por estar en PLACE-HERE-2-CONTACTS.");
 }
 
 // ---------- Reportes de la corrida ----------
